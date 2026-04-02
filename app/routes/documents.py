@@ -1,29 +1,21 @@
 from pathlib import Path
 import shutil
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.models import Case, Document, Request
+from app.models import Case, Request, Document
 from app.schemas import DocumentCreate, DocumentResponse, DocumentUpdate
 
 router = APIRouter(prefix="/documents", tags=["documents"])
-
-DOCUMENTS_BASE_DIR = Path(__file__).resolve().parent.parent / "storage" / "documents"
-
-
-def _get_case_directory(case_id: int) -> Path:
-    case_dir = DOCUMENTS_BASE_DIR / f"case_{case_id}"
-    case_dir.mkdir(parents=True, exist_ok=True)
-    return case_dir
 
 
 def _build_unique_file_path(case_dir: Path, original_filename: str) -> Path:
     source_name = Path(original_filename).name.strip()
     if not source_name:
-        source_name = "document"
+        source_name = "file"
 
     candidate = case_dir / source_name
     if not candidate.exists():
@@ -80,7 +72,7 @@ def create_document_for_case(
     return item
 
 
-@router.post("/upload/case/{case_id}", response_model=DocumentResponse)
+@router.post("/case/{case_id}/upload", response_model=DocumentResponse)
 def upload_document_for_case(
     case_id: int,
     document_type: str = Form(...),
@@ -92,52 +84,53 @@ def upload_document_for_case(
     public_status: str | None = Form(None),
     received_date: str | None = Form(None),
     notes: str | None = Form(None),
-    file: UploadFile = File(...),
+    uploaded_file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
     case = db.query(Case).filter(Case.id == case_id).first()
     if not case:
         raise HTTPException(status_code=404, detail="Case not found")
 
-    parsed_request_id: int | None = None
-    if request_id is not None and request_id.strip() != "":
+    normalized_request_id: int | None = None
+    if request_id is not None and str(request_id).strip() != "":
         try:
-            parsed_request_id = int(request_id)
+            normalized_request_id = int(str(request_id).strip())
         except ValueError:
             raise HTTPException(status_code=400, detail="request_id must be an integer")
 
         request_item = (
             db.query(Request)
-            .filter(Request.id == parsed_request_id, Request.case_id == case_id)
+            .filter(Request.id == normalized_request_id, Request.case_id == case_id)
             .first()
         )
         if not request_item:
             raise HTTPException(status_code=400, detail="Request not found for this case")
 
-    if not file.filename:
-        raise HTTPException(status_code=400, detail="Uploaded file must have a filename")
+    original_filename = uploaded_file.filename or "file"
+    safe_filename = Path(original_filename).name
 
-    case_dir = _get_case_directory(case_id)
-    target_path = _build_unique_file_path(case_dir, file.filename)
+    storage_root = Path("storage")
+    case_dir = storage_root / f"case_{case_id}"
+    case_dir.mkdir(parents=True, exist_ok=True)
+
+    target_path = _build_unique_file_path(case_dir, safe_filename)
 
     try:
         with target_path.open("wb") as buffer:
-            shutil.copyfileobj(file.file, buffer)
-    except Exception as exc:
-        raise HTTPException(status_code=500, detail=f"Failed to save file: {exc}") from exc
+            shutil.copyfileobj(uploaded_file.file, buffer)
     finally:
-        file.file.close()
+        uploaded_file.file.close()
 
     item = Document(
         case_id=case_id,
-        request_id=parsed_request_id,
+        request_id=normalized_request_id,
         document_type=document_type,
         title=title,
         description=description,
         source=source,
         sender=sender,
-        file_path=str(target_path),
-        mime_type=file.content_type,
+        file_path=str(target_path).replace("\\", "/"),
+        mime_type=uploaded_file.content_type,
         public_status=public_status,
         received_date=received_date,
         notes=notes,
@@ -195,11 +188,7 @@ def download_document(document_id: int, db: Session = Depends(get_db)):
 
 
 @router.patch("/{document_id}", response_model=DocumentResponse)
-def update_document(
-    document_id: int,
-    payload: DocumentUpdate,
-    db: Session = Depends(get_db),
-):
+def update_document(document_id: int, payload: DocumentUpdate, db: Session = Depends(get_db)):
     item = db.query(Document).filter(Document.id == document_id).first()
     if not item:
         raise HTTPException(status_code=404, detail="Document not found")
@@ -247,3 +236,32 @@ def update_document(
     db.commit()
     db.refresh(item)
     return item
+
+
+@router.delete("/{document_id}")
+def delete_document(document_id: int, db: Session = Depends(get_db)):
+    item = db.query(Document).filter(Document.id == document_id).first()
+    if not item:
+        raise HTTPException(status_code=404, detail="Document not found")
+
+    file_deleted = False
+    file_missing = False
+
+    if item.file_path:
+        file_path = Path(item.file_path)
+        if file_path.exists():
+            if file_path.is_file():
+                file_path.unlink()
+                file_deleted = True
+        else:
+            file_missing = True
+
+    db.delete(item)
+    db.commit()
+
+    return {
+        "message": "Document deleted",
+        "document_id": document_id,
+        "file_deleted": file_deleted,
+        "file_missing": file_missing,
+    }
