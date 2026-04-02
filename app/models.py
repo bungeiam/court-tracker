@@ -73,13 +73,13 @@ class Request(Base):
     id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
 
-    request_type = Column(Text, nullable=False)  # court_documents / police_pretrial
+    request_type = Column(Text, nullable=False)
     recipient_name = Column(Text, nullable=True)
     recipient_email = Column(Text, nullable=True)
     subject = Column(Text, nullable=False)
     body = Column(Text, nullable=False)
 
-    status = Column(Text, default="draft")  # draft / approved / sent / replied / failed
+    status = Column(Text, default="draft")
     sent_at = Column(Text, nullable=True)
     response_due_date = Column(Text, nullable=True)
     response_summary = Column(Text, nullable=True)
