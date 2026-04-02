@@ -3,3 +3,4 @@ __pycache__/
 *.pyc
 court_tracker.db
 .env
+/storage
