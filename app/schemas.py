@@ -1,5 +1,6 @@
-from pydantic import BaseModel
 from typing import Optional
+
+from pydantic import BaseModel
 
 
 class CourtBase(BaseModel):
@@ -19,6 +20,97 @@ class CourtResponse(CourtBase):
 
     class Config:
         from_attributes = True
+
+
+class InquiryBatchBase(BaseModel):
+    name: str
+    start_date: str
+    end_date: str
+    notes: Optional[str] = None
+    status: str = "draft"
+
+
+class InquiryBatchCreate(InquiryBatchBase):
+    pass
+
+
+class InquiryBatchUpdate(BaseModel):
+    name: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    notes: Optional[str] = None
+    status: Optional[str] = None
+
+
+class InquiryBatchResponse(InquiryBatchBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class InquiryBase(BaseModel):
+    batch_id: int
+    court_id: int
+    recipient_name: Optional[str] = None
+    recipient_email: Optional[str] = None
+    subject: str
+    body: str
+    status: str = "draft"
+    sent_at: Optional[str] = None
+    acknowledged_at: Optional[str] = None
+    responded_at: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class InquiryCreate(InquiryBase):
+    pass
+
+
+class InquiryUpdate(BaseModel):
+    recipient_name: Optional[str] = None
+    recipient_email: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    status: Optional[str] = None
+    sent_at: Optional[str] = None
+    acknowledged_at: Optional[str] = None
+    responded_at: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class InquiryResponse(InquiryBase):
+    id: int
+
+    class Config:
+        from_attributes = True
+
+
+class InquiryMessageBase(BaseModel):
+    message_type: str
+    sender: Optional[str] = None
+    subject: Optional[str] = None
+    body: Optional[str] = None
+    received_at: Optional[str] = None
+    file_path: Optional[str] = None
+    mime_type: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class InquiryMessageCreate(InquiryMessageBase):
+    pass
+
+
+class InquiryMessageResponse(InquiryMessageBase):
+    id: int
+    inquiry_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class InquiryBatchGeneratePayload(BaseModel):
+    court_ids: list[int]
 
 
 class HearingDateBase(BaseModel):
