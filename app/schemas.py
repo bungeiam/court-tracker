@@ -87,6 +87,46 @@ class RequestUpdate(BaseModel):
     response_summary: Optional[str] = None
 
 
+class DocumentBase(BaseModel):
+    document_type: str
+    title: str
+    description: Optional[str] = None
+    request_id: Optional[int] = None
+    source: Optional[str] = None
+    sender: Optional[str] = None
+    file_path: Optional[str] = None
+    mime_type: Optional[str] = None
+    public_status: Optional[str] = None
+    received_date: Optional[str] = None
+    notes: Optional[str] = None
+
+
+class DocumentCreate(DocumentBase):
+    pass
+
+
+class DocumentResponse(DocumentBase):
+    id: int
+    case_id: int
+
+    class Config:
+        from_attributes = True
+
+
+class DocumentUpdate(BaseModel):
+    document_type: Optional[str] = None
+    title: Optional[str] = None
+    description: Optional[str] = None
+    request_id: Optional[int] = None
+    source: Optional[str] = None
+    sender: Optional[str] = None
+    file_path: Optional[str] = None
+    mime_type: Optional[str] = None
+    public_status: Optional[str] = None
+    received_date: Optional[str] = None
+    notes: Optional[str] = None
+
+
 class CaseBase(BaseModel):
     court_id: int
     external_case_id: Optional[str] = None

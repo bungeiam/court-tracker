@@ -1,6 +1,5 @@
 from sqlalchemy import Column, Integer, Text, ForeignKey
 from sqlalchemy.orm import relationship
-
 from app.database import Base
 
 
@@ -22,6 +21,7 @@ class Case(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     court_id = Column(Integer, ForeignKey("courts.id"), nullable=False)
+
     external_case_id = Column(Text, nullable=True)
     case_type = Column(Text, nullable=True)
     title = Column(Text, nullable=True)
@@ -30,6 +30,7 @@ class Case(Base):
     source_method = Column(Text, nullable=True)
     source_reference = Column(Text, nullable=True)
     raw_text = Column(Text, nullable=True)
+
     interest_score = Column(Integer, nullable=True)
     interest_notes = Column(Text, nullable=True)
     selected_for_followup = Column(Integer, default=0)
@@ -39,6 +40,7 @@ class Case(Base):
     hearing_dates = relationship("HearingDate", back_populates="case", cascade="all, delete-orphan")
     parties = relationship("Party", back_populates="case", cascade="all, delete-orphan")
     requests = relationship("Request", back_populates="case", cascade="all, delete-orphan")
+    documents = relationship("Document", back_populates="case", cascade="all, delete-orphan")
 
 
 class HearingDate(Base):
@@ -70,14 +72,41 @@ class Request(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
-    request_type = Column(Text, nullable=False)      # court_documents / police_pretrial
+
+    request_type = Column(Text, nullable=False)  # court_documents / police_pretrial
     recipient_name = Column(Text, nullable=True)
     recipient_email = Column(Text, nullable=True)
     subject = Column(Text, nullable=False)
     body = Column(Text, nullable=False)
-    status = Column(Text, default="draft")           # draft / approved / sent / replied / failed
+
+    status = Column(Text, default="draft")  # draft / approved / sent / replied / failed
     sent_at = Column(Text, nullable=True)
     response_due_date = Column(Text, nullable=True)
     response_summary = Column(Text, nullable=True)
 
     case = relationship("Case", back_populates="requests")
+    documents = relationship("Document", back_populates="request")
+
+
+class Document(Base):
+    __tablename__ = "documents"
+
+    id = Column(Integer, primary_key=True, index=True)
+    case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+    request_id = Column(Integer, ForeignKey("requests.id"), nullable=True)
+
+    document_type = Column(Text, nullable=False)
+    title = Column(Text, nullable=False)
+    description = Column(Text, nullable=True)
+
+    source = Column(Text, nullable=True)
+    sender = Column(Text, nullable=True)
+    file_path = Column(Text, nullable=True)
+    mime_type = Column(Text, nullable=True)
+
+    public_status = Column(Text, nullable=True)
+    received_date = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+
+    case = relationship("Case", back_populates="documents")
+    request = relationship("Request", back_populates="documents")
