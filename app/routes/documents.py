@@ -1,6 +1,7 @@
 from pathlib import Path
+import shutil
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -40,6 +41,79 @@ def create_document_for_case(case_id: int, payload: DocumentCreate, db: Session 
         received_date=payload.received_date,
         notes=payload.notes,
     )
+    db.add(item)
+    db.commit()
+    db.refresh(item)
+    return item
+
+
+@router.post("/case/{case_id}/upload", response_model=DocumentResponse)
+def upload_document_for_case(
+    case_id: int,
+    document_type: str = Form(...),
+    title: str = Form(...),
+    description: str | None = Form(None),
+    request_id: str | None = Form(None),
+    source: str | None = Form(None),
+    sender: str | None = Form(None),
+    public_status: str | None = Form(None),
+    received_date: str | None = Form(None),
+    notes: str | None = Form(None),
+    uploaded_file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    case = db.query(Case).filter(Case.id == case_id).first()
+    if not case:
+        raise HTTPException(status_code=404, detail="Case not found")
+
+    normalized_request_id: int | None = None
+    if request_id is not None and str(request_id).strip() != "":
+        try:
+            normalized_request_id = int(str(request_id).strip())
+        except ValueError:
+            raise HTTPException(status_code=400, detail="request_id must be an integer")
+
+        request_item = (
+            db.query(Request)
+            .filter(Request.id == normalized_request_id, Request.case_id == case_id)
+            .first()
+        )
+        if not request_item:
+            raise HTTPException(status_code=400, detail="Request not found for this case")
+
+    original_filename = uploaded_file.filename or "file"
+    safe_filename = Path(original_filename).name
+
+    storage_root = Path("storage")
+    case_dir = storage_root / f"case_{case_id}"
+    case_dir.mkdir(parents=True, exist_ok=True)
+
+    target_path = case_dir / safe_filename
+
+    if target_path.exists():
+        raise HTTPException(
+            status_code=409,
+            detail=f"File already exists on disk: {safe_filename}",
+        )
+
+    with target_path.open("wb") as buffer:
+        shutil.copyfileobj(uploaded_file.file, buffer)
+
+    item = Document(
+        case_id=case_id,
+        request_id=normalized_request_id,
+        document_type=document_type,
+        title=title,
+        description=description,
+        source=source,
+        sender=sender,
+        file_path=str(target_path).replace("\\", "/"),
+        mime_type=uploaded_file.content_type,
+        public_status=public_status,
+        received_date=received_date,
+        notes=notes,
+    )
+
     db.add(item)
     db.commit()
     db.refresh(item)
