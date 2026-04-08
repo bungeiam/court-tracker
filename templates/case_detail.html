@@ -54,7 +54,7 @@
       </div>
     </div>
 
-    <div class="card shadow-sm">
+    <div class="card shadow-sm mb-4">
       <div class="card-header bg-white">
         <h2 class="h5 mb-0">Kiinnostavuus</h2>
       </div>
@@ -66,6 +66,79 @@
           <dt class="col-sm-5">Interest notes</dt>
           <dd class="col-sm-7">{{ case_item.interest_notes or "-" }}</dd>
         </dl>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Lataa uusi dokumentti</h2>
+      </div>
+      <div class="card-body">
+        <form method="post" action="/ui/cases/{{ case_item.id }}/documents/upload" enctype="multipart/form-data" class="row g-3">
+          <div class="col-12">
+            <label for="uploaded_file" class="form-label">Tiedosto</label>
+            <input id="uploaded_file" name="uploaded_file" type="file" class="form-control" required>
+          </div>
+
+          <div class="col-12">
+            <label for="title" class="form-label">Otsikko</label>
+            <input id="title" name="title" type="text" class="form-control" required>
+          </div>
+
+          <div class="col-md-6">
+            <label for="document_type" class="form-label">Document type</label>
+            <input id="document_type" name="document_type" type="text" class="form-control" placeholder="esim. haastehakemus" required>
+          </div>
+
+          <div class="col-md-6">
+            <label for="request_id" class="form-label">Liitä requestiin</label>
+            <select id="request_id" name="request_id" class="form-select">
+              <option value="">Ei request-linkitystä</option>
+              {% for request_item in upload_request_options %}
+              <option value="{{ request_item.id }}">
+                #{{ request_item.id }} – {{ request_item.request_type }}
+              </option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div class="col-12">
+            <label for="description" class="form-label">Kuvaus</label>
+            <textarea id="description" name="description" class="form-control" rows="2"></textarea>
+          </div>
+
+          <div class="col-md-6">
+            <label for="source" class="form-label">Source</label>
+            <input id="source" name="source" type="text" class="form-control" placeholder="esim. käräjäoikeus">
+          </div>
+
+          <div class="col-md-6">
+            <label for="sender" class="form-label">Sender</label>
+            <input id="sender" name="sender" type="text" class="form-control">
+          </div>
+
+          <div class="col-md-6">
+            <label for="public_status" class="form-label">Public status</label>
+            <input id="public_status" name="public_status" type="text" class="form-control" placeholder="esim. julkinen">
+          </div>
+
+          <div class="col-md-6">
+            <label for="received_date" class="form-label">Received date</label>
+            <input id="received_date" name="received_date" type="text" class="form-control" placeholder="YYYY-MM-DD">
+          </div>
+
+          <div class="col-12">
+            <label for="notes" class="form-label">Notes</label>
+            <textarea id="notes" name="notes" class="form-control" rows="2"></textarea>
+          </div>
+
+          <div class="col-12">
+            <div class="small text-muted mb-3">
+              Samannimiset tiedostot uudelleennimetään edelleen backendin nykyisellä logiikalla automaattisesti.
+            </div>
+            <button type="submit" class="btn btn-primary">Lataa dokumentti</button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -190,8 +263,13 @@
     </div>
 
     <div class="card shadow-sm">
-      <div class="card-header bg-white">
-        <h2 class="h5 mb-0">Liittyvät dokumentit</h2>
+      <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+        <div>
+          <h2 class="h5 mb-0">Liittyvät dokumentit</h2>
+        </div>
+        <div class="small text-muted">
+          {{ documents|length }} dokumenttia
+        </div>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -199,23 +277,60 @@
             <thead class="table-light">
               <tr>
                 <th>ID</th>
-                <th>Nimi</th>
-                <th>Content type</th>
-                <th>Lataus</th>
+                <th>Dokumentti</th>
+                <th>Metatiedot</th>
+                <th>Toiminnot</th>
               </tr>
             </thead>
             <tbody>
               {% for document in documents %}
               <tr>
-                <td class="text-nowrap">
+                <td class="text-nowrap align-top">
                   <a href="/ui/documents/{{ document.id }}" class="text-decoration-none fw-semibold">
                     #{{ document.id }}
                   </a>
                 </td>
-                <td>{{ document.title or document.file_path or "-" }}</td>
-                <td>{{ document.mime_type or "-" }}</td>
-                <td>
-                  <a href="/documents/{{ document.id }}/download" class="text-decoration-none">Lataa</a>
+                <td class="align-top">
+                  <div class="fw-semibold">
+                    {{ document.title or document.file_path or "-" }}
+                  </div>
+                  <div class="small text-muted text-break">{{ document.file_path or "-" }}</div>
+                  {% if document.request %}
+                  <div class="small mt-1">
+                    <a href="/ui/requests/{{ document.request.id }}" class="text-decoration-none">
+                      Liitetty requestiin #{{ document.request.id }} – {{ document.request.request_type }}
+                    </a>
+                  </div>
+                  {% elif document.request_id %}
+                  <div class="small text-muted mt-1">Request #{{ document.request_id }}</div>
+                  {% endif %}
+                </td>
+                <td class="align-top">
+                  <div><strong>Tyyppi:</strong> {{ document.document_type or "-" }}</div>
+                  <div><strong>Content type:</strong> {{ document.mime_type or "-" }}</div>
+                  <div><strong>Source:</strong> {{ document.source or "-" }}</div>
+                  <div><strong>Sender:</strong> {{ document.sender or "-" }}</div>
+                  <div><strong>Received:</strong> {{ document.received_date or "-" }}</div>
+                  <div><strong>Public:</strong> {{ document.public_status or "-" }}</div>
+                  {% if document.description %}
+                  <div class="mt-1"><strong>Kuvaus:</strong> {{ document.description }}</div>
+                  {% endif %}
+                  {% if document.notes %}
+                  <div class="mt-1"><strong>Notes:</strong> {{ document.notes }}</div>
+                  {% endif %}
+                </td>
+                <td class="align-top">
+                  <div class="d-grid gap-2">
+                    <a href="/documents/{{ document.id }}/download" class="btn btn-sm btn-primary">
+                      Lataa
+                    </a>
+                    <a href="/ui/documents/{{ document.id }}" class="btn btn-sm btn-outline-secondary">
+                      Avaa detail
+                    </a>
+                    <form method="post" action="/ui/documents/{{ document.id }}/delete" onsubmit="return confirm('Poistetaanko dokumentti varmasti?');">
+                      <button type="submit" class="btn btn-sm btn-outline-danger w-100">Poista</button>
+                    </form>
+                  </div>
                 </td>
               </tr>
               {% else %}

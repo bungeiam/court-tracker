@@ -23,10 +23,15 @@
     <h1 class="h4 mb-1">Document #{{ document_item.id }}</h1>
     <p class="text-muted mb-0">{{ document_item.title or "-" }}</p>
   </div>
-  <div>
+  <div class="d-flex gap-2 flex-wrap">
     <a href="/documents/{{ document_item.id }}/download" class="btn btn-primary">
       Lataa tiedosto
     </a>
+    {% if can_delete_document %}
+    <form method="post" action="/ui/documents/{{ document_item.id }}/delete" onsubmit="return confirm('Poistetaanko dokumentti varmasti?');">
+      <button type="submit" class="btn btn-outline-danger">Poista dokumentti</button>
+    </form>
+    {% endif %}
   </div>
 </div>
 
@@ -64,6 +69,9 @@
 
           <dt class="col-sm-5">Public status</dt>
           <dd class="col-sm-7">{{ document_item.public_status or "-" }}</dd>
+
+          <dt class="col-sm-5">Description</dt>
+          <dd class="col-sm-7">{{ document_item.description or "-" }}</dd>
 
           <dt class="col-sm-5">Notes</dt>
           <dd class="col-sm-7">{{ document_item.notes or "-" }}</dd>
@@ -111,12 +119,16 @@
         <h2 class="h5 mb-0">Toiminnot</h2>
       </div>
       <div class="card-body">
-        <p class="text-muted mb-3">
-          Tämä vaihe on vielä read-only. Dokumenttia voi tarkastella ja ladata, mutta ei vielä muokata käyttöliittymästä.
-        </p>
-        <a href="/documents/{{ document_item.id }}/download" class="btn btn-outline-primary">
-          Avaa latauslinkki
-        </a>
+        <div class="d-flex gap-2 flex-wrap">
+          <a href="/documents/{{ document_item.id }}/download" class="btn btn-outline-primary">
+            Avaa latauslinkki
+          </a>
+          {% if can_delete_document %}
+          <form method="post" action="/ui/documents/{{ document_item.id }}/delete" onsubmit="return confirm('Poistetaanko dokumentti varmasti?');">
+            <button type="submit" class="btn btn-outline-danger">Poista dokumentti</button>
+          </form>
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>

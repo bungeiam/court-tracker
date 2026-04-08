@@ -4,7 +4,7 @@ import re
 from types import SimpleNamespace
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session, joinedload
@@ -16,6 +16,10 @@ from app.models import (
     Inquiry,
     InquiryBatch,
     Request as CaseRequest,
+)
+from app.routes.documents import (
+    delete_document as delete_document_api,
+    upload_document_for_case as upload_document_for_case_api,
 )
 from app.routes.inquiries import (
     CreateCasesPayload,
@@ -644,9 +648,67 @@ def case_detail(
                 "parties": parties,
                 "requests": requests,
                 "documents": documents,
+                "upload_request_options": requests,
             },
         ),
     )
+
+
+@router.post("/ui/cases/{case_id}/documents/upload")
+def upload_case_document_ui(
+    case_id: int,
+    document_type: str = Form(...),
+    title: str = Form(...),
+    description: str | None = Form(None),
+    request_id: str | None = Form(None),
+    source: str | None = Form(None),
+    sender: str | None = Form(None),
+    public_status: str | None = Form(None),
+    received_date: str | None = Form(None),
+    notes: str | None = Form(None),
+    uploaded_file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+):
+    detail_path = f"/ui/cases/{case_id}"
+
+    try:
+        upload_document_for_case_api(
+            case_id=case_id,
+            document_type=document_type,
+            title=title,
+            description=description,
+            request_id=request_id,
+            source=source,
+            sender=sender,
+            public_status=public_status,
+            received_date=received_date,
+            notes=notes,
+            uploaded_file=uploaded_file,
+            db=db,
+        )
+    except HTTPException as exc:
+        return _redirect_with_message(detail_path, error=exc.detail)
+
+    return _redirect_with_message(detail_path, success="Dokumentti ladattiin onnistuneesti.")
+
+
+@router.post("/ui/documents/{document_id}/delete")
+def delete_document_ui(
+    document_id: int,
+    db: Session = Depends(get_db),
+):
+    document = db.query(Document).filter(Document.id == document_id).first()
+    if not document:
+        return _redirect_with_message("/ui", error="Document not found")
+
+    case_id = document.case_id
+
+    try:
+        delete_document_api(document_id=document_id, db=db)
+    except HTTPException as exc:
+        return _redirect_with_message(f"/ui/cases/{case_id}", error=exc.detail)
+
+    return _redirect_with_message(f"/ui/cases/{case_id}", success="Dokumentti poistettiin.")
 
 
 @router.get("/ui/requests/{request_id}", response_class=HTMLResponse)
@@ -739,6 +801,7 @@ def document_detail(
             {
                 "page_title": f"Document #{document.id}",
                 "document_item": document,
+                "can_delete_document": True,
             },
         ),
     )
