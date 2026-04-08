@@ -1,0 +1,233 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | Court Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+  <div>
+    <div class="mb-2">
+      <a href="/ui" class="text-decoration-none">&larr; Takaisin dashboardiin</a>
+    </div>
+    <h1 class="h4 mb-1">Case #{{ case_item.id }}</h1>
+    <p class="text-muted mb-0">{{ case_item.court.name if case_item.court else "-" }}</p>
+  </div>
+  <div class="d-flex align-items-start gap-2 flex-wrap">
+    <span class="badge text-bg-secondary fs-6">{{ case_item.status or "-" }}</span>
+    {% if case_item.selected_for_followup %}
+    <span class="badge text-bg-warning">Selected for follow-up</span>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-xl-5">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Perustiedot</h2>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">ID</dt>
+          <dd class="col-sm-7">#{{ case_item.id }}</dd>
+
+          <dt class="col-sm-5">Court</dt>
+          <dd class="col-sm-7">{{ case_item.court.name if case_item.court else "-" }}</dd>
+
+          <dt class="col-sm-5">External case ID</dt>
+          <dd class="col-sm-7">{{ case_item.external_case_id or "-" }}</dd>
+
+          <dt class="col-sm-5">Case type</dt>
+          <dd class="col-sm-7">{{ case_item.case_type or "-" }}</dd>
+
+          <dt class="col-sm-5">Title</dt>
+          <dd class="col-sm-7">{{ case_item.title or "-" }}</dd>
+
+          <dt class="col-sm-5">Public status</dt>
+          <dd class="col-sm-7">{{ case_item.public_status or "-" }}</dd>
+
+          <dt class="col-sm-5">Source method</dt>
+          <dd class="col-sm-7">{{ case_item.source_method or "-" }}</dd>
+
+          <dt class="col-sm-5">Source reference</dt>
+          <dd class="col-sm-7">{{ case_item.source_reference or "-" }}</dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Kiinnostavuus</h2>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">Interest score</dt>
+          <dd class="col-sm-7">{{ case_item.interest_score if case_item.interest_score is not none else "-" }}</dd>
+
+          <dt class="col-sm-5">Interest notes</dt>
+          <dd class="col-sm-7">{{ case_item.interest_notes or "-" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-7">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Yhteenveto / raw</h2>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="text-muted small mb-1">Summary</div>
+          <div class="border rounded p-3 bg-body-tertiary" style="white-space: pre-wrap;">{{ case_item.summary or "-" }}</div>
+        </div>
+        <div>
+          <div class="text-muted small mb-1">Raw text</div>
+          <div class="border rounded p-3 bg-body-tertiary" style="white-space: pre-wrap;">{{ case_item.raw_text or "-" }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Hearing dates</h2>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Päivä</th>
+                <th>Tyyppi</th>
+                <th>Notes</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in hearing_dates %}
+              <tr>
+                <td class="text-nowrap">{{ item.hearing_date }}</td>
+                <td>{{ item.hearing_type or "-" }}</td>
+                <td>{{ item.notes or "-" }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="3" class="text-center text-muted py-4">Ei hearing date -rivejä.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Parties</h2>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>Rooli</th>
+                <th>Nimi</th>
+                <th>Julkinen</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for party in parties %}
+              <tr>
+                <td>{{ party.role or "-" }}</td>
+                <td>{{ party.name }}</td>
+                <td>{{ "Kyllä" if party.is_public else "Ei" }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="3" class="text-center text-muted py-4">Ei parties-rivejä.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Liittyvät requestit</h2>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>ID</th>
+                <th>Tyyppi</th>
+                <th>Status</th>
+                <th>Recipient</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for request_item in requests %}
+              <tr>
+                <td class="text-nowrap">
+                  <a href="/ui/requests/{{ request_item.id }}" class="text-decoration-none fw-semibold">
+                    #{{ request_item.id }}
+                  </a>
+                </td>
+                <td>{{ request_item.request_type }}</td>
+                <td><span class="badge text-bg-secondary">{{ request_item.status or "-" }}</span></td>
+                <td>{{ request_item.recipient_email or request_item.recipient_name or "-" }}</td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="text-center text-muted py-4">Ei requesteja.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Liittyvät dokumentit</h2>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>ID</th>
+                <th>Nimi</th>
+                <th>Content type</th>
+                <th>Lataus</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for document in documents %}
+              <tr>
+                <td class="text-nowrap">
+                  <a href="/ui/documents/{{ document.id }}" class="text-decoration-none fw-semibold">
+                    #{{ document.id }}
+                  </a>
+                </td>
+                <td>{{ document.title or document.file_path or "-" }}</td>
+                <td>{{ document.mime_type or "-" }}</td>
+                <td>
+                  <a href="/documents/{{ document.id }}/download" class="text-decoration-none">Lataa</a>
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="4" class="text-center text-muted py-4">Ei dokumentteja.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

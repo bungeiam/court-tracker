@@ -1,4 +1,3 @@
-# app/main.py
 from pathlib import Path
 
 from fastapi import FastAPI
@@ -18,7 +17,8 @@ app = FastAPI(title="Court Tracker")
 BASE_DIR = Path(__file__).resolve().parent.parent
 STATIC_DIR = BASE_DIR / "static"
 
-app.mount("/static", StaticFiles(directory=STATIC_DIR), name="static")
+if STATIC_DIR.exists():
+    app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 app.include_router(courts_router)
 app.include_router(cases_router)

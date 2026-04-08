@@ -1,0 +1,124 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | Court Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+  <div>
+    <div class="mb-2">
+      <a href="/ui" class="text-decoration-none">&larr; Takaisin dashboardiin</a>
+      {% if document_item.case %}
+      <span class="text-muted mx-2">/</span>
+      <a href="/ui/cases/{{ document_item.case.id }}" class="text-decoration-none">
+        Case #{{ document_item.case.id }}
+      </a>
+      {% endif %}
+      {% if document_item.request %}
+      <span class="text-muted mx-2">/</span>
+      <a href="/ui/requests/{{ document_item.request.id }}" class="text-decoration-none">
+        Request #{{ document_item.request.id }}
+      </a>
+      {% endif %}
+    </div>
+    <h1 class="h4 mb-1">Document #{{ document_item.id }}</h1>
+    <p class="text-muted mb-0">{{ document_item.title or "-" }}</p>
+  </div>
+  <div>
+    <a href="/documents/{{ document_item.id }}/download" class="btn btn-primary">
+      Lataa tiedosto
+    </a>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-xl-5">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Perustiedot</h2>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">ID</dt>
+          <dd class="col-sm-7">#{{ document_item.id }}</dd>
+
+          <dt class="col-sm-5">Tiedoston nimi</dt>
+          <dd class="col-sm-7">{{ document_item.title or "-" }}</dd>
+
+          <dt class="col-sm-5">Document type</dt>
+          <dd class="col-sm-7">{{ document_item.document_type or "-" }}</dd>
+
+          <dt class="col-sm-5">Content type</dt>
+          <dd class="col-sm-7">{{ document_item.mime_type or "-" }}</dd>
+
+          <dt class="col-sm-5">Created / tallennettu</dt>
+          <dd class="col-sm-7">{{ document_item.received_date or "-" }}</dd>
+
+          <dt class="col-sm-5">File path</dt>
+          <dd class="col-sm-7 text-break">{{ document_item.file_path or "-" }}</dd>
+
+          <dt class="col-sm-5">Source</dt>
+          <dd class="col-sm-7">{{ document_item.source or "-" }}</dd>
+
+          <dt class="col-sm-5">Sender</dt>
+          <dd class="col-sm-7">{{ document_item.sender or "-" }}</dd>
+
+          <dt class="col-sm-5">Public status</dt>
+          <dd class="col-sm-7">{{ document_item.public_status or "-" }}</dd>
+
+          <dt class="col-sm-5">Notes</dt>
+          <dd class="col-sm-7">{{ document_item.notes or "-" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-7">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Liittymät</h2>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-4">Case</dt>
+          <dd class="col-sm-8">
+            {% if document_item.case %}
+            <a href="/ui/cases/{{ document_item.case.id }}" class="text-decoration-none">
+              #{{ document_item.case.id }}{% if document_item.case.title %} – {{ document_item.case.title }}{% endif %}
+            </a>
+            {% else %}
+            {{ document_item.case_id }}
+            {% endif %}
+          </dd>
+
+          <dt class="col-sm-4">Request</dt>
+          <dd class="col-sm-8">
+            {% if document_item.request %}
+            <a href="/ui/requests/{{ document_item.request.id }}" class="text-decoration-none">
+              #{{ document_item.request.id }} – {{ document_item.request.request_type }}
+            </a>
+            {% elif document_item.request_id %}
+            {{ document_item.request_id }}
+            {% else %}
+            -
+            {% endif %}
+          </dd>
+        </dl>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Toiminnot</h2>
+      </div>
+      <div class="card-body">
+        <p class="text-muted mb-3">
+          Tämä vaihe on vielä read-only. Dokumenttia voi tarkastella ja ladata, mutta ei vielä muokata käyttöliittymästä.
+        </p>
+        <a href="/documents/{{ document_item.id }}/download" class="btn btn-outline-primary">
+          Avaa latauslinkki
+        </a>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

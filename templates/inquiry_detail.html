@@ -1,0 +1,138 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | Court Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+  <div>
+    <div class="mb-2">
+      <a href="/ui" class="text-decoration-none">&larr; Takaisin dashboardiin</a>
+      {% if inquiry.batch %}
+      <span class="text-muted mx-2">/</span>
+      <a href="/ui/inquiry-batches/{{ inquiry.batch.id }}" class="text-decoration-none">
+        Batch #{{ inquiry.batch.id }}
+      </a>
+      {% endif %}
+    </div>
+    <h1 class="h4 mb-1">Inquiry #{{ inquiry.id }}</h1>
+    <p class="text-muted mb-0">{{ inquiry.court.name if inquiry.court else "-" }}</p>
+  </div>
+  <div>
+    <span class="badge text-bg-secondary fs-6">{{ inquiry.status or "-" }}</span>
+  </div>
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-xl-4">
+    <div class="card shadow-sm h-100">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Perustiedot</h2>
+      </div>
+      <div class="card-body">
+        <dl class="row mb-0">
+          <dt class="col-sm-5">ID</dt>
+          <dd class="col-sm-7">#{{ inquiry.id }}</dd>
+
+          <dt class="col-sm-5">Court</dt>
+          <dd class="col-sm-7">{{ inquiry.court.name if inquiry.court else "-" }}</dd>
+
+          <dt class="col-sm-5">Batch</dt>
+          <dd class="col-sm-7">
+            {% if inquiry.batch %}
+            <a href="/ui/inquiry-batches/{{ inquiry.batch.id }}" class="text-decoration-none">
+              {{ inquiry.batch.name }}
+            </a>
+            {% else %}
+            -
+            {% endif %}
+          </dd>
+
+          <dt class="col-sm-5">Vastaanottaja</dt>
+          <dd class="col-sm-7">{{ inquiry.recipient_name or "-" }}</dd>
+
+          <dt class="col-sm-5">Sähköposti</dt>
+          <dd class="col-sm-7">{{ inquiry.recipient_email or "-" }}</dd>
+
+          <dt class="col-sm-5">Sent</dt>
+          <dd class="col-sm-7">{{ inquiry.sent_at or "-" }}</dd>
+
+          <dt class="col-sm-5">Acknowledged</dt>
+          <dd class="col-sm-7">{{ inquiry.acknowledged_at or "-" }}</dd>
+
+          <dt class="col-sm-5">Responded</dt>
+          <dd class="col-sm-7">{{ inquiry.responded_at or "-" }}</dd>
+
+          <dt class="col-sm-5">Notes</dt>
+          <dd class="col-sm-7">{{ inquiry.notes or "-" }}</dd>
+        </dl>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-8">
+    <div class="card shadow-sm mb-4">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Viesti</h2>
+      </div>
+      <div class="card-body">
+        <div class="mb-3">
+          <div class="text-muted small mb-1">Subject</div>
+          <div class="fw-semibold">{{ inquiry.subject }}</div>
+        </div>
+
+        <div>
+          <div class="text-muted small mb-1">Body</div>
+          <div class="border rounded p-3 bg-body-tertiary" style="white-space: pre-wrap;">{{ inquiry.body }}</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Messages</h2>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-hover align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>ID</th>
+                <th>Tyyppi</th>
+                <th>Lähettäjä</th>
+                <th>Subject</th>
+                <th>Received</th>
+                <th>Liitepolku</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for message in messages %}
+              <tr>
+                <td class="text-nowrap">#{{ message.id }}</td>
+                <td>{{ message.message_type }}</td>
+                <td>{{ message.sender or "-" }}</td>
+                <td>{{ message.subject or "-" }}</td>
+                <td class="text-nowrap">{{ message.received_at or "-" }}</td>
+                <td class="text-break">{{ message.file_path or "-" }}</td>
+              </tr>
+              <tr class="table-light">
+                <td colspan="6">
+                  <div class="small text-muted mb-1">Body</div>
+                  <div style="white-space: pre-wrap;">{{ message.body or "-" }}</div>
+                  {% if message.notes %}
+                  <div class="mt-2 small text-muted">Notes: {{ message.notes }}</div>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}
+              <tr>
+                <td colspan="6" class="text-center text-muted py-4">Ei message-rivejä.</td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
