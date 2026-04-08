@@ -1,5 +1,6 @@
+# app/routes/inquiries.py
+
 from datetime import UTC, datetime
-import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -14,6 +15,7 @@ from app.schemas import (
     InquiryUpdate,
 )
 from app.services.email_service import send_email
+from app.services.inquiry_parser import parse_inquiry_response_body
 
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
 
@@ -21,61 +23,6 @@ router = APIRouter(prefix="/inquiries", tags=["inquiries"])
 class CreateCasesPayload(BaseModel):
     message_id: int | None = None
     overwrite_source_reference: str | None = None
-
-
-def _detect_hearing_type(text: str) -> str | None:
-    lower_text = text.lower()
-
-    if "pääkäsittely" in lower_text:
-        return "pääkäsittely"
-    if "jatkokäsittely" in lower_text:
-        return "jatkokäsittely"
-    if "valmisteluistunto" in lower_text:
-        return "valmisteluistunto"
-    if "istunto" in lower_text:
-        return "istunto"
-
-    return None
-
-
-def _extract_date_iso(text: str) -> str | None:
-    match = re.search(r"\b(\d{1,2})\.(\d{1,2})\.(\d{4})\b", text)
-    if not match:
-        return None
-
-    day, month, year = match.groups()
-    return f"{year}-{int(month):02d}-{int(day):02d}"
-
-
-def _parse_case_line(line: str) -> dict | None:
-    cleaned = " ".join(line.strip().split())
-    if not cleaned:
-        return None
-
-    case_id_match = re.match(r"^([A-ZÅÄÖa-zåäö]\s*\d{1,4}/\d{1,6})\s+(.*)$", cleaned)
-    if not case_id_match:
-        return None
-
-    external_case_id = re.sub(r"\s+", " ", case_id_match.group(1)).strip()
-    rest = case_id_match.group(2).strip()
-
-    title = rest
-    if "," in rest:
-        title = rest.split(",", 1)[0].strip()
-    elif " - " in rest:
-        title = rest.split(" - ", 1)[0].strip()
-
-    hearing_date = _extract_date_iso(cleaned)
-    hearing_type = _detect_hearing_type(cleaned)
-
-    return {
-        "external_case_id": external_case_id,
-        "title": title or None,
-        "summary": cleaned,
-        "hearing_date": hearing_date,
-        "hearing_type": hearing_type,
-        "raw_text": cleaned,
-    }
 
 
 @router.get("", response_model=list[InquiryResponse])
@@ -233,6 +180,7 @@ def send_all_approved_inquiries(db: Session = Depends(get_db)):
             )
 
     batch_ids = {item.batch_id for item in items}
+
     for batch_id in batch_ids:
         batch = db.query(InquiryBatch).filter(InquiryBatch.id == batch_id).first()
         if not batch:
@@ -269,10 +217,12 @@ def create_inquiry_message(
         mime_type=payload.mime_type,
         notes=payload.notes,
     )
+
     db.add(item)
     db.flush()
 
     timestamp = payload.received_at or datetime.now(UTC).isoformat()
+
     if payload.message_type == "ack":
         inquiry.acknowledged_at = timestamp
         inquiry.status = "acknowledged"
@@ -346,32 +296,16 @@ def create_cases_from_inquiry(
             .order_by(InquiryMessage.id.desc())
             .first()
         )
-
-    if not message:
-        raise HTTPException(status_code=400, detail="No response message found for this inquiry")
+        if not message:
+            raise HTTPException(status_code=400, detail="No response message found for this inquiry")
 
     if not message.body or not message.body.strip():
         raise HTTPException(status_code=400, detail="Response message body is empty")
 
     source_reference = payload.overwrite_source_reference or f"Inquiry {inquiry_id} / message {message.id}"
-
-    raw_lines = [line.strip() for line in message.body.splitlines() if line.strip()]
-
-    parsed_rows = []
-    skipped_rows = []
-
-    for index, line in enumerate(raw_lines, start=1):
-        parsed = _parse_case_line(line)
-        if parsed:
-            parsed_rows.append(parsed)
-        else:
-            skipped_rows.append(
-                {
-                    "line_number": index,
-                    "line": line,
-                    "reason": "Could not parse case row",
-                }
-            )
+    parse_result = parse_inquiry_response_body(message.body)
+    parsed_rows = parse_result["parsed_rows"]
+    skipped_rows = parse_result["skipped_rows"]
 
     if not parsed_rows:
         raise HTTPException(status_code=400, detail="No case rows could be parsed from response message")

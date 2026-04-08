@@ -24,6 +24,28 @@ class InquiryParseResult(TypedDict):
     skipped_rows: list[SkippedRow]
 
 
+HEARING_TYPE_PATTERNS = (
+    "pääkäsittely",
+    "jatkokäsittely",
+    "valmisteluistunto",
+    "istunto",
+)
+
+
+def normalize_case_line(line: str) -> str:
+    cleaned = " ".join(line.strip().split())
+    if not cleaned:
+        return ""
+
+    # Poista rivin alusta yleiset numeroinnit ja listamerkit:
+    # "1. ", "2) ", "- ", "• ", "* "
+    cleaned = re.sub(
+        r"^(?:(?:\d+\s*[\.\)]\s*)|(?:[-•*]\s*))+", "", cleaned
+    ).strip()
+
+    return cleaned
+
+
 def detect_hearing_type(text: str) -> str | None:
     lower_text = text.lower()
 
@@ -48,30 +70,51 @@ def extract_date_iso(text: str) -> str | None:
     return f"{year}-{int(month):02d}-{int(day):02d}"
 
 
+def extract_title(rest: str) -> str | None:
+    candidate = rest.strip()
+    if not candidate:
+        return None
+
+    # Erotellaan otsikko joustavammin:
+    # pilkku, välilyönnillinen viiva, en dash, em dash
+    separator_match = re.split(r"\s*(?:,| - | – | — )\s*", candidate, maxsplit=1)
+    if separator_match and separator_match[0].strip():
+        candidate = separator_match[0].strip()
+
+    # Jos erotinta ei ollut mutta loppuosa sisältää istuntotyypin,
+    # poistetaan se otsikosta.
+    candidate = re.sub(
+        r"\s+(?:pääkäsittely|jatkokäsittely|valmisteluistunto|istunto)\b.*$",
+        "",
+        candidate,
+        flags=re.IGNORECASE,
+    ).strip()
+
+    return candidate or None
+
+
 def parse_case_line(line: str) -> ParsedCaseRow | None:
-    cleaned = " ".join(line.strip().split())
+    cleaned = normalize_case_line(line)
     if not cleaned:
         return None
 
-    case_id_match = re.match(r"^([A-ZÅÄÖa-zåäö]\s*\d{1,4}/\d{1,6})\s+(.*)$", cleaned)
+    case_id_match = re.match(
+        r"^([A-ZÅÄÖa-zåäö]\s*\d{1,4}/\d{1,6})\s+(.*)$",
+        cleaned,
+    )
     if not case_id_match:
         return None
 
     external_case_id = re.sub(r"\s+", " ", case_id_match.group(1)).strip()
     rest = case_id_match.group(2).strip()
 
-    title = rest
-    if "," in rest:
-        title = rest.split(",", 1)[0].strip()
-    elif " - " in rest:
-        title = rest.split(" - ", 1)[0].strip()
-
+    title = extract_title(rest)
     hearing_date = extract_date_iso(cleaned)
     hearing_type = detect_hearing_type(cleaned)
 
     return {
         "external_case_id": external_case_id,
-        "title": title or None,
+        "title": title,
         "summary": cleaned,
         "hearing_date": hearing_date,
         "hearing_type": hearing_type,
@@ -81,7 +124,6 @@ def parse_case_line(line: str) -> ParsedCaseRow | None:
 
 def parse_inquiry_response_body(body: str) -> InquiryParseResult:
     raw_lines = [line.strip() for line in body.splitlines() if line.strip()]
-
     parsed_rows: list[ParsedCaseRow] = []
     skipped_rows: list[SkippedRow] = []
 
