@@ -25,6 +25,37 @@ class CreateCasesPayload(BaseModel):
     overwrite_source_reference: str | None = None
 
 
+def _normalize_case_identity_value(value: str | None) -> str:
+    return " ".join((value or "").split()).strip().lower()
+
+
+def _find_duplicate_case(
+    db: Session,
+    court_id: int,
+    external_case_id: str | None,
+    title: str | None,
+) -> Case | None:
+    if not external_case_id:
+        return None
+
+    normalized_title = _normalize_case_identity_value(title)
+
+    candidate_cases = (
+        db.query(Case)
+        .filter(
+            Case.court_id == court_id,
+            Case.external_case_id == external_case_id,
+        )
+        .all()
+    )
+
+    for candidate in candidate_cases:
+        if _normalize_case_identity_value(candidate.title) == normalized_title:
+            return candidate
+
+    return None
+
+
 @router.get("", response_model=list[InquiryResponse])
 def list_inquiries(db: Session = Depends(get_db)):
     return db.query(Inquiry).order_by(Inquiry.id.desc()).all()
@@ -314,14 +345,11 @@ def create_cases_from_inquiry(
     duplicate_cases = []
 
     for row in parsed_rows:
-        existing_case = (
-            db.query(Case)
-            .filter(
-                Case.court_id == inquiry.court_id,
-                Case.external_case_id == row["external_case_id"],
-                Case.source_reference == source_reference,
-            )
-            .first()
+        existing_case = _find_duplicate_case(
+            db=db,
+            court_id=inquiry.court_id,
+            external_case_id=row["external_case_id"],
+            title=row["title"],
         )
         if existing_case:
             duplicate_cases.append(
@@ -329,7 +357,7 @@ def create_cases_from_inquiry(
                     "case_id": existing_case.id,
                     "external_case_id": existing_case.external_case_id,
                     "title": existing_case.title,
-                    "reason": "Case already created from this inquiry response",
+                    "reason": "Case already exists for this court, external case id and title",
                 }
             )
             continue
@@ -377,8 +405,10 @@ def create_cases_from_inquiry(
         "source_reference": source_reference,
         "parsed_count": len(parsed_rows),
         "created_count": len(created_cases),
+        "skipped_duplicates_count": len(duplicate_cases),
         "duplicate_count": len(duplicate_cases),
         "skipped_count": len(skipped_rows),
+        "created_case_ids": [item["case_id"] for item in created_cases],
         "created_cases": created_cases,
         "duplicates": duplicate_cases,
         "skipped_rows": skipped_rows,

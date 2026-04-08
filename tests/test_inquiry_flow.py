@@ -1,3 +1,5 @@
+# tests/test_inquiry_flow.py
+
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -222,7 +224,9 @@ def test_end_to_end_inquiry_to_cases_flow(client):
     assert create_cases_data["parsed_count"] == 3
     assert create_cases_data["created_count"] == 3
     assert create_cases_data["duplicate_count"] == 0
+    assert create_cases_data["skipped_duplicates_count"] == 0
     assert create_cases_data["skipped_count"] == 0
+    assert len(create_cases_data["created_case_ids"]) == 3
 
     cases_response = client.get("/cases")
     assert cases_response.status_code == 200, cases_response.text
@@ -335,3 +339,154 @@ def test_send_requires_approved_status(client):
     assert send_response.status_code == 400
     assert "Only approved inquiries can be sent" in send_response.text
     assert len(client.sent_emails) == 0
+
+
+def create_response_message(
+    client,
+    inquiry_id: int,
+    body: str,
+    received_at: str = "2026-04-03T11:30:00",
+):
+    response = client.post(
+        f"/inquiries/{inquiry_id}/messages",
+        json={
+            "message_type": "response",
+            "sender": "paijat-hame.ko@oikeus.fi",
+            "subject": "Käsittelytiedot",
+            "body": body,
+            "received_at": received_at,
+            "notes": "Varsinainen vastaus",
+        },
+    )
+    assert response.status_code == 200, response.text
+    return response.json()
+
+
+def test_create_cases_does_not_create_duplicates_when_called_twice(client):
+    court = create_court(
+        client,
+        name="Päijät-Hämeen käräjäoikeus",
+        city="Lahti",
+        email="paijat-hame.ko@oikeus.fi",
+    )
+
+    batch = create_inquiry_batch(client)
+    batch_id = batch["id"]
+
+    generate_response = client.post(
+        f"/inquiry-batches/{batch_id}/generate",
+        json={"court_ids": [court["id"]]},
+    )
+    assert generate_response.status_code == 200, generate_response.text
+
+    inquiries_response = client.get("/inquiries")
+    assert inquiries_response.status_code == 200, inquiries_response.text
+    inquiries = inquiries_response.json()
+    assert len(inquiries) == 1
+    inquiry_id = inquiries[0]["id"]
+
+    response_message = create_response_message(
+        client,
+        inquiry_id=inquiry_id,
+        body=(
+            "R 26/1234 Törkeä pahoinpitely, pääkäsittely 15.4.2026\n"
+            "R 26/1250 Huumausainerikos, pääkäsittely 22.4.2026"
+        ),
+    )
+
+    first_create_cases_response = client.post(
+        f"/inquiries/{inquiry_id}/create-cases",
+        json={"message_id": response_message["id"]},
+    )
+    assert first_create_cases_response.status_code == 200, first_create_cases_response.text
+    first_data = first_create_cases_response.json()
+
+    assert first_data["created_count"] == 2
+    assert first_data["skipped_duplicates_count"] == 0
+    assert len(first_data["created_case_ids"]) == 2
+
+    second_create_cases_response = client.post(
+        f"/inquiries/{inquiry_id}/create-cases",
+        json={"message_id": response_message["id"]},
+    )
+    assert second_create_cases_response.status_code == 200, second_create_cases_response.text
+    second_data = second_create_cases_response.json()
+
+    assert second_data["created_count"] == 0
+    assert second_data["skipped_duplicates_count"] == 2
+    assert second_data["duplicate_count"] == 2
+    assert second_data["created_case_ids"] == []
+
+    cases_response = client.get("/cases")
+    assert cases_response.status_code == 200, cases_response.text
+    cases = cases_response.json()
+    assert len(cases) == 2
+
+
+def test_create_cases_allows_same_external_case_id_if_title_differs(client):
+    court = create_court(
+        client,
+        name="Päijät-Hämeen käräjäoikeus",
+        city="Lahti",
+        email="paijat-hame.ko@oikeus.fi",
+    )
+
+    batch = create_inquiry_batch(client)
+    batch_id = batch["id"]
+
+    generate_response = client.post(
+        f"/inquiry-batches/{batch_id}/generate",
+        json={"court_ids": [court["id"]]},
+    )
+    assert generate_response.status_code == 200, generate_response.text
+
+    inquiries_response = client.get("/inquiries")
+    assert inquiries_response.status_code == 200, inquiries_response.text
+    inquiry_id = inquiries_response.json()[0]["id"]
+
+    first_response_message = create_response_message(
+        client,
+        inquiry_id=inquiry_id,
+        body="R 26/1234 Törkeä pahoinpitely, pääkäsittely 15.4.2026",
+        received_at="2026-04-03T11:30:00",
+    )
+    second_response_message = create_response_message(
+        client,
+        inquiry_id=inquiry_id,
+        body="R 26/1234 Lievä pahoinpitely, pääkäsittely 15.4.2026",
+        received_at="2026-04-04T09:00:00",
+    )
+
+    first_create_cases_response = client.post(
+        f"/inquiries/{inquiry_id}/create-cases",
+        json={"message_id": first_response_message["id"]},
+    )
+    assert first_create_cases_response.status_code == 200, first_create_cases_response.text
+    first_data = first_create_cases_response.json()
+    assert first_data["created_count"] == 1
+    assert first_data["skipped_duplicates_count"] == 0
+
+    second_create_cases_response = client.post(
+        f"/inquiries/{inquiry_id}/create-cases",
+        json={"message_id": second_response_message["id"]},
+    )
+    assert second_create_cases_response.status_code == 200, second_create_cases_response.text
+    second_data = second_create_cases_response.json()
+
+    assert second_data["created_count"] == 1
+    assert second_data["skipped_duplicates_count"] == 0
+    assert len(second_data["created_case_ids"]) == 1
+
+    cases_response = client.get("/cases")
+    assert cases_response.status_code == 200, cases_response.text
+    cases = cases_response.json()
+    assert len(cases) == 2
+
+    case_details = []
+    for case in cases:
+        detail_response = client.get(f"/cases/{case['id']}")
+        assert detail_response.status_code == 200, detail_response.text
+        case_details.append(detail_response.json())
+
+    titles = {case["title"] for case in case_details}
+    assert titles == {"Törkeä pahoinpitely", "Lievä pahoinpitely"}
