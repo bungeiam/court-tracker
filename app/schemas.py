@@ -1,3 +1,5 @@
+# app/schemas.py
+
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -241,3 +243,62 @@ class CaseDetailResponse(CaseResponse):
     hearing_dates: list[HearingDateResponse] = []
     parties: list[PartyResponse] = []
     requests: list[RequestResponse] = []
+
+
+class RequestTrackingCaseSummary(BaseModel):
+    case_id: int
+    external_case_id: Optional[str] = None
+    title: Optional[str] = None
+    case_status: Optional[str] = None
+    court_name: Optional[str] = None
+    court_city: Optional[str] = None
+    selected_for_followup: bool
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RequestTrackingResponse(BaseModel):
+    request_id: int
+    case_id: int
+    request_type: str
+    status: str
+    recipient_name: Optional[str] = None
+    recipient_email: Optional[str] = None
+    subject: str
+    sent_at: Optional[str] = None
+    response_due_date: Optional[str] = None
+    response_summary: Optional[str] = None
+    has_document: bool
+    document_count: int
+    case: RequestTrackingCaseSummary
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RequestTrackingListResponse(BaseModel):
+    count: int
+    items: list[RequestTrackingResponse]
+
+
+class FollowUpCaseWithoutRequestResponse(BaseModel):
+    case_id: int
+    court_id: int
+    external_case_id: Optional[str] = None
+    case_type: Optional[str] = None
+    title: Optional[str] = None
+    case_status: Optional[str] = None
+    interest_score: Optional[int] = None
+    interest_notes: Optional[str] = None
+    selected_for_followup: bool
+    request_count: int
+    document_count: int
+    first_hearing_date: Optional[str] = None
+    court_name: Optional[str] = None
+    court_city: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class FollowUpCaseWithoutRequestListResponse(BaseModel):
+    count: int
+    items: list[FollowUpCaseWithoutRequestResponse]

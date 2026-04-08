@@ -1,3 +1,5 @@
+# app/routes/cases.py
+
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session, joinedload
@@ -6,8 +8,10 @@ from app.database import get_db
 from app.models import Case, Court, HearingDate, Party
 from app.schemas import (
     CaseCreate,
-    CaseResponse,
     CaseDetailResponse,
+    CaseResponse,
+    FollowUpCaseWithoutRequestListResponse,
+    FollowUpCaseWithoutRequestResponse,
     HearingDateCreate,
     HearingDateResponse,
     PartyCreate,
@@ -56,6 +60,58 @@ def list_cases(db: Session = Depends(get_db)):
     return db.query(Case).order_by(Case.id.desc()).all()
 
 
+@router.get("/tracking/missing-requests", response_model=FollowUpCaseWithoutRequestListResponse)
+def list_followup_cases_missing_requests(db: Session = Depends(get_db)):
+    cases = (
+        db.query(Case)
+        .options(
+            joinedload(Case.court),
+            joinedload(Case.hearing_dates),
+            joinedload(Case.requests),
+            joinedload(Case.documents),
+        )
+        .filter(Case.selected_for_followup == 1)
+        .order_by(Case.id.desc())
+        .all()
+    )
+
+    result_items: list[FollowUpCaseWithoutRequestResponse] = []
+
+    for case in cases:
+        request_count = len(case.requests or [])
+        if request_count > 0:
+            continue
+
+        sorted_hearing_dates = sorted(
+            [item.hearing_date for item in (case.hearing_dates or []) if item.hearing_date]
+        )
+        first_hearing_date = sorted_hearing_dates[0] if sorted_hearing_dates else None
+
+        result_items.append(
+            FollowUpCaseWithoutRequestResponse(
+                case_id=case.id,
+                court_id=case.court_id,
+                external_case_id=case.external_case_id,
+                case_type=case.case_type,
+                title=case.title,
+                case_status=case.status,
+                interest_score=case.interest_score,
+                interest_notes=case.interest_notes,
+                selected_for_followup=bool(case.selected_for_followup),
+                request_count=request_count,
+                document_count=len(case.documents or []),
+                first_hearing_date=first_hearing_date,
+                court_name=case.court.name if case.court else None,
+                court_city=case.court.city if case.court else None,
+            )
+        )
+
+    return FollowUpCaseWithoutRequestListResponse(
+        count=len(result_items),
+        items=result_items,
+    )
+
+
 @router.get("/{case_id}", response_model=CaseDetailResponse)
 def get_case(case_id: int, db: Session = Depends(get_db)):
     db_case = (
@@ -68,10 +124,8 @@ def get_case(case_id: int, db: Session = Depends(get_db)):
         .filter(Case.id == case_id)
         .first()
     )
-
     if not db_case:
         raise HTTPException(status_code=404, detail="Case not found")
-
     return db_case
 
 
@@ -85,10 +139,8 @@ def update_case_selection(case_id: int, payload: CaseUpdateSelection, db: Sessio
 
     if payload.interest_score is not None:
         db_case.interest_score = payload.interest_score
-
     if payload.interest_notes is not None:
         db_case.interest_notes = payload.interest_notes
-
     if payload.status is not None:
         db_case.status = payload.status
 
