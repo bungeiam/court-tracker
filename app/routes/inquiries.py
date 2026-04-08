@@ -1,5 +1,5 @@
-import re
 from datetime import UTC, datetime
+import re
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -269,12 +269,10 @@ def create_inquiry_message(
         mime_type=payload.mime_type,
         notes=payload.notes,
     )
-
     db.add(item)
     db.flush()
 
     timestamp = payload.received_at or datetime.now(UTC).isoformat()
-
     if payload.message_type == "ack":
         inquiry.acknowledged_at = timestamp
         inquiry.status = "acknowledged"
@@ -348,8 +346,9 @@ def create_cases_from_inquiry(
             .order_by(InquiryMessage.id.desc())
             .first()
         )
-        if not message:
-            raise HTTPException(status_code=400, detail="No response message found for this inquiry")
+
+    if not message:
+        raise HTTPException(status_code=400, detail="No response message found for this inquiry")
 
     if not message.body or not message.body.strip():
         raise HTTPException(status_code=400, detail="Response message body is empty")
@@ -357,6 +356,7 @@ def create_cases_from_inquiry(
     source_reference = payload.overwrite_source_reference or f"Inquiry {inquiry_id} / message {message.id}"
 
     raw_lines = [line.strip() for line in message.body.splitlines() if line.strip()]
+
     parsed_rows = []
     skipped_rows = []
 
