@@ -1,5 +1,3 @@
-# app/routes/inquiries.py
-
 from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -14,6 +12,7 @@ from app.schemas import (
     InquiryResponse,
     InquiryUpdate,
 )
+from app.services.case_service import assess_case_interest
 from app.services.email_service import send_email
 from app.services.inquiry_parser import parse_inquiry_response_body
 
@@ -148,7 +147,7 @@ def send_single_inquiry(inquiry_id: int, db: Session = Depends(get_db)):
             body=item.body,
         )
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Sending failed: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Sending failed: {str(e)}") from e
 
     item.status = "sent"
     item.sent_at = datetime.now(UTC).isoformat()
@@ -211,7 +210,6 @@ def send_all_approved_inquiries(db: Session = Depends(get_db)):
             )
 
     batch_ids = {item.batch_id for item in items}
-
     for batch_id in batch_ids:
         batch = db.query(InquiryBatch).filter(InquiryBatch.id == batch_id).first()
         if not batch:
@@ -248,7 +246,6 @@ def create_inquiry_message(
         mime_type=payload.mime_type,
         notes=payload.notes,
     )
-
     db.add(item)
     db.flush()
 
@@ -334,6 +331,7 @@ def create_cases_from_inquiry(
         raise HTTPException(status_code=400, detail="Response message body is empty")
 
     source_reference = payload.overwrite_source_reference or f"Inquiry {inquiry_id} / message {message.id}"
+
     parse_result = parse_inquiry_response_body(message.body)
     parsed_rows = parse_result["parsed_rows"]
     skipped_rows = parse_result["skipped_rows"]
@@ -362,6 +360,11 @@ def create_cases_from_inquiry(
             )
             continue
 
+        assessment = assess_case_interest(
+            title=row["title"],
+            summary=row["summary"],
+        )
+
         new_case = Case(
             court_id=inquiry.court_id,
             external_case_id=row["external_case_id"],
@@ -372,6 +375,8 @@ def create_cases_from_inquiry(
             source_method="inquiry_response",
             source_reference=source_reference,
             raw_text=row["raw_text"],
+            interest_score=assessment.score,
+            interest_notes=assessment.notes,
             selected_for_followup=0,
             status="new",
         )
@@ -394,6 +399,8 @@ def create_cases_from_inquiry(
                 "title": new_case.title,
                 "hearing_date": row["hearing_date"],
                 "hearing_type": row["hearing_type"],
+                "interest_score": new_case.interest_score,
+                "interest_notes": new_case.interest_notes,
             }
         )
 
