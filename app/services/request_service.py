@@ -1,3 +1,4 @@
+from app.config import SENDER_EMAIL, SENDER_NAME, SENDER_PHONE
 from app.models import Case
 
 
@@ -22,25 +23,32 @@ def build_court_request(case: Case) -> dict:
     court_name = case.court.name if case.court else "Tuomioistuin"
     court_email = case.court.email if case.court else None
     hearing_dates = format_hearing_dates(case)
-
     subject_id = case.external_case_id or f"case-{case.id}"
+
     subject = f"Tietopyyntö asiassa {subject_id}"
 
-    body = f"""Pyydän jäljennöstä asiassa {subject_id} annetusta tuomiosta sekä tiedon siitä, onko asiassa saatavilla muita julkisia oikeudenkäyntiasiakirjoja.
+    body = f"""Hyvä vastaanottaja,
+
+Pyydän jäljennöstä asiassa {subject_id} annetusta tuomiosta sekä tiedon siitä, onko asiassa saatavilla muita julkisia oikeudenkäyntiasiakirjoja.
 
 Asia:
-- Tuomioistuin: {court_name}
-- Asian laji: {case.case_type or 'Ei tiedossa'}
-- Asianimike: {case.title or 'Ei tiedossa'}
-- Käsittelypäivä / käsittelypäivät: {hearing_dates}
-- Asianosaiset: {format_public_parties(case)}
+- tuomioistuin: {court_name}
+- asian laji: {case.case_type or 'Ei tiedossa'}
+- asianimike: {case.title or 'Ei tiedossa'}
+- käsittelypäivä / käsittelypäivät: {hearing_dates}
+- asianosaiset: {format_public_parties(case)}
 
 Pyydän asiakirjat ensisijaisesti sähköisessä muodossa.
 
+Mikäli kaikkia pyydettyjä asiakirjoja tai tietoja ei voida luovuttaa, pyydän toimittamaan ne asiakirjat ja tiedot, jotka ovat julkisia ja luovutettavissa. Pyydän tällöin myös ilmoittamaan, miltä osin tietoja ei anneta sekä mihin lainkohtaan tai muuhun oikeudelliseen perusteeseen tiedon epääminen perustuu.
+
+Pyydän ensisijaisesti toimittamaan vain sellaiset asiakirjat ja tiedot, jotka ovat jo valmiiksi sähköisessä muodossa. En pyydä laatimaan uutta asiakirjaa tai muuttamaan paperimuotoista aineistoa sähköiseen muotoon tämän pyynnön johdosta.
+
 Ystävällisin terveisin
-[OMA NIMI]
-[OMA SÄHKÖPOSTI]
-[OMA PUHELIN]
+
+{SENDER_NAME}
+{SENDER_EMAIL}
+{SENDER_PHONE}
 """
 
     return {
@@ -55,24 +63,30 @@ Ystävällisin terveisin
 
 def build_police_request(case: Case) -> dict:
     hearing_dates = format_hearing_dates(case)
-
     subject = "Asiakirjapyyntö / esitutkintapöytäkirja"
 
-    body = f"""Pyydän esitutkintapöytäkirjaa asiassa, joka on käsitelty seuraavin tiedoin:
+    body = f"""Hyvä vastaanottaja,
 
-- Tuomioistuin: {case.court.name if case.court else 'Ei tiedossa'}
-- Asian laji: {case.case_type or 'Ei tiedossa'}
-- Asianimike: {case.title or 'Ei tiedossa'}
-- Käsittelypäivä / käsittelypäivät: {hearing_dates}
-- Mahdollinen diaarinumero: {case.external_case_id or 'Ei tiedossa'}
-- Asianosaiset: {format_public_parties(case)}
+Pyydän esitutkintapöytäkirjaa asiassa, joka on käsitelty seuraavin tiedoin:
+
+- tuomioistuin: {case.court.name if case.court else 'Ei tiedossa'}
+- asian laji: {case.case_type or 'Ei tiedossa'}
+- asianimike: {case.title or 'Ei tiedossa'}
+- käsittelypäivä / käsittelypäivät: {hearing_dates}
+- mahdollinen diaarinumero: {case.external_case_id or 'Ei tiedossa'}
+- asianosaiset: {format_public_parties(case)}
 
 Mikäli asia voidaan yksilöidä näillä tiedoilla, pyydän asiakirjat sähköisessä muodossa tai tiedon niiden saatavuudesta.
 
+Mikäli kaikkia pyydettyjä asiakirjoja tai tietoja ei voida luovuttaa, pyydän toimittamaan ne asiakirjat ja tiedot, jotka ovat julkisia ja luovutettavissa. Pyydän tällöin myös ilmoittamaan, miltä osin tietoja ei anneta sekä mihin lainkohtaan tai muuhun oikeudelliseen perusteeseen tiedon epääminen perustuu.
+
+Pyydän ensisijaisesti toimittamaan vain sellaiset asiakirjat ja tiedot, jotka ovat jo valmiiksi sähköisessä muodossa. En pyydä laatimaan uutta asiakirjaa tai muuttamaan paperimuotoista aineistoa sähköiseen muotoon tämän pyynnön johdosta.
+
 Ystävällisin terveisin
-Joona Teva
-joona.teva@gmail.com
-+358443278403
+
+{SENDER_NAME}
+{SENDER_EMAIL}
+{SENDER_PHONE}
 """
 
     return {
