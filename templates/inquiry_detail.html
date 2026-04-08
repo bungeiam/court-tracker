@@ -1,3 +1,4 @@
+<!-- templates/inquiry_detail.html -->
 {% extends "base.html" %}
 
 {% block title %}{{ page_title }} | Court Tracker{% endblock %}
@@ -17,14 +18,32 @@
     <h1 class="h4 mb-1">Inquiry #{{ inquiry.id }}</h1>
     <p class="text-muted mb-0">{{ inquiry.court.name if inquiry.court else "-" }}</p>
   </div>
-  <div>
+  <div class="d-flex align-items-start gap-2 flex-wrap">
     <span class="badge text-bg-secondary fs-6">{{ inquiry.status or "-" }}</span>
+
+    {% if inquiry.status == "draft" %}
+    <form method="post" action="/ui/inquiries/{{ inquiry.id }}/approve" class="d-inline">
+      <button type="submit" class="btn btn-outline-primary btn-sm">Approve inquiry</button>
+    </form>
+    {% endif %}
+
+    {% if inquiry.status == "approved" %}
+    <form method="post" action="/ui/inquiries/{{ inquiry.id }}/send" class="d-inline">
+      <button type="submit" class="btn btn-primary btn-sm">Send inquiry</button>
+    </form>
+    {% endif %}
+
+    {% if can_create_cases %}
+    <form method="post" action="/ui/inquiries/{{ inquiry.id }}/create-cases" class="d-inline">
+      <button type="submit" class="btn btn-outline-success btn-sm">Create cases</button>
+    </form>
+    {% endif %}
   </div>
 </div>
 
 <div class="row g-4">
   <div class="col-12 col-xl-4">
-    <div class="card shadow-sm h-100">
+    <div class="card shadow-sm mb-4">
       <div class="card-header bg-white">
         <h2 class="h5 mb-0">Perustiedot</h2>
       </div>
@@ -65,6 +84,41 @@
           <dt class="col-sm-5">Notes</dt>
           <dd class="col-sm-7">{{ inquiry.notes or "-" }}</dd>
         </dl>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Toiminnot</h2>
+      </div>
+      <div class="card-body">
+        <div class="small text-muted mb-3">
+          Actionit näkyvät vain silloin, kun inquiry on sopivassa tilassa.
+        </div>
+
+        <div class="d-grid gap-2">
+          {% if inquiry.status == "draft" %}
+          <form method="post" action="/ui/inquiries/{{ inquiry.id }}/approve">
+            <button type="submit" class="btn btn-outline-primary w-100">Approve inquiry</button>
+          </form>
+          {% endif %}
+
+          {% if inquiry.status == "approved" %}
+          <form method="post" action="/ui/inquiries/{{ inquiry.id }}/send">
+            <button type="submit" class="btn btn-primary w-100">Send inquiry</button>
+          </form>
+          {% endif %}
+
+          {% if can_create_cases %}
+          <form method="post" action="/ui/inquiries/{{ inquiry.id }}/create-cases">
+            <button type="submit" class="btn btn-outline-success w-100">Create cases latest response from</button>
+          </form>
+          {% else %}
+          <div class="alert alert-light border mb-0">
+            Create cases tulee näkyviin, kun inquiryllä on vähintään yksi <code>response</code>-viesti.
+          </div>
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
@@ -108,7 +162,12 @@
               {% for message in messages %}
               <tr>
                 <td class="text-nowrap">#{{ message.id }}</td>
-                <td>{{ message.message_type }}</td>
+                <td>
+                  {{ message.message_type }}
+                  {% if message.message_type == "response" %}
+                  <span class="badge text-bg-success ms-2">case source</span>
+                  {% endif %}
+                </td>
                 <td>{{ message.sender or "-" }}</td>
                 <td>{{ message.subject or "-" }}</td>
                 <td class="text-nowrap">{{ message.received_at or "-" }}</td>

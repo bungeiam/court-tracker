@@ -1,3 +1,4 @@
+<!-- templates/base.html -->
 <!DOCTYPE html>
 <html lang="fi">
 <head>
@@ -40,7 +41,7 @@
         </ul>
 
         <span class="navbar-text small text-light-emphasis">
-          Read-only UI v2
+          UI v3
         </span>
       </div>
     </div>
@@ -48,6 +49,20 @@
 
   <main class="py-4">
     <div class="container-fluid px-4">
+      {% if success_message %}
+      <div class="alert alert-success alert-dismissible fade show" role="alert">
+        {{ success_message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Sulje"></button>
+      </div>
+      {% endif %}
+
+      {% if error_message %}
+      <div class="alert alert-danger alert-dismissible fade show" role="alert">
+        {{ error_message }}
+        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Sulje"></button>
+      </div>
+      {% endif %}
+
       {% block content %}{% endblock %}
     </div>
   </main>

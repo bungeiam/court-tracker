@@ -1,3 +1,4 @@
+<!-- templates/request_detail.html -->
 {% extends "base.html" %}
 
 {% block title %}{{ page_title }} | Court Tracker{% endblock %}
@@ -17,14 +18,26 @@
     <h1 class="h4 mb-1">Request #{{ request_item.id }}</h1>
     <p class="text-muted mb-0">{{ request_item.request_type }}</p>
   </div>
-  <div>
+  <div class="d-flex align-items-start gap-2 flex-wrap">
     <span class="badge text-bg-secondary fs-6">{{ request_item.status or "-" }}</span>
+
+    {% if request_item.status == "draft" %}
+    <form method="post" action="/ui/requests/{{ request_item.id }}/approve" class="d-inline">
+      <button type="submit" class="btn btn-outline-primary btn-sm">Approve request</button>
+    </form>
+    {% endif %}
+
+    {% if request_item.status == "approved" %}
+    <form method="post" action="/ui/requests/{{ request_item.id }}/send" class="d-inline">
+      <button type="submit" class="btn btn-primary btn-sm">Send request</button>
+    </form>
+    {% endif %}
   </div>
 </div>
 
 <div class="row g-4">
   <div class="col-12 col-xl-4">
-    <div class="card shadow-sm h-100">
+    <div class="card shadow-sm mb-4">
       <div class="card-header bg-white">
         <h2 class="h5 mb-0">Perustiedot</h2>
       </div>
@@ -64,6 +77,37 @@
           <dt class="col-sm-5">Response summary</dt>
           <dd class="col-sm-7">{{ request_item.response_summary or "-" }}</dd>
         </dl>
+      </div>
+    </div>
+
+    <div class="card shadow-sm">
+      <div class="card-header bg-white">
+        <h2 class="h5 mb-0">Toiminnot</h2>
+      </div>
+      <div class="card-body">
+        <div class="small text-muted mb-3">
+          Actionit näkyvät vain silloin, kun request on sopivassa tilassa.
+        </div>
+
+        <div class="d-grid gap-2">
+          {% if request_item.status == "draft" %}
+          <form method="post" action="/ui/requests/{{ request_item.id }}/approve">
+            <button type="submit" class="btn btn-outline-primary w-100">Approve request</button>
+          </form>
+          {% endif %}
+
+          {% if request_item.status == "approved" %}
+          <form method="post" action="/ui/requests/{{ request_item.id }}/send">
+            <button type="submit" class="btn btn-primary w-100">Send request</button>
+          </form>
+          {% endif %}
+
+          {% if request_item.status not in ["draft", "approved"] %}
+          <div class="alert alert-light border mb-0">
+            Tälle requestille ei ole tällä hetkellä käytettävissä UI-actioneita.
+          </div>
+          {% endif %}
+        </div>
       </div>
     </div>
   </div>
