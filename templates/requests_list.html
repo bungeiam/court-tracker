@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | Court Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+  <div>
+    <div class="mb-2">
+      <a href="/ui" class="text-decoration-none">&larr; Takaisin dashboardiin</a>
+    </div>
+    <h1 class="h3 mb-1">Requestit</h1>
+    <p class="text-muted mb-0">Status-suodatus ja dokumenttien seuranta samassa näkymässä.</p>
+  </div>
+  <div class="small text-muted">
+    Yhteensä {{ total_count }} requestia · ilman dokumenttia {{ missing_document_count }}
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white">
+    <h2 class="h5 mb-0">Suodatus</h2>
+  </div>
+  <div class="card-body">
+    <form method="get" action="/ui/requests" class="row g-3 align-items-end">
+      <div class="col-12 col-md-4 col-xl-3">
+        <label for="status" class="form-label">Status</label>
+        <select id="status" name="status" class="form-select">
+          <option value="all" {% if status_filter == "all" %}selected{% endif %}>Kaikki</option>
+          {% for status_name, count in status_counts.items() %}
+          <option value="{{ status_name }}" {% if status_filter == status_name %}selected{% endif %}>
+            {{ status_name }} ({{ count }})
+          </option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-12 col-md-4 col-xl-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Suodata</button>
+        <a href="/ui/requests" class="btn btn-outline-secondary">Nollaa</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-white">
+    <h2 class="h5 mb-0">Request-lista</h2>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Case</th>
+            <th>Tyyppi</th>
+            <th>Status</th>
+            <th>Recipient</th>
+            <th>Dokumentit</th>
+            <th>Due</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td class="text-nowrap">
+              <a href="/ui/requests/{{ row.request_item.id }}" class="text-decoration-none fw-semibold">#{{ row.request_item.id }}</a>
+            </td>
+            <td class="text-nowrap">
+              {% if row.request_item.case %}
+              <a href="/ui/cases/{{ row.request_item.case.id }}" class="text-decoration-none">#{{ row.request_item.case.id }}</a>
+              {% else %}
+              {{ row.request_item.case_id }}
+              {% endif %}
+            </td>
+            <td>{{ row.request_item.request_type }}</td>
+            <td><span class="badge {{ status_badge_class(row.request_item.status) }}">{{ row.request_item.status or "-" }}</span></td>
+            <td>{{ row.request_item.recipient_email or row.request_item.recipient_name or "-" }}</td>
+            <td>
+              {% if row.has_document %}
+              <span class="badge text-bg-success">{{ row.document_count }}</span>
+              {% else %}
+              <span class="badge text-bg-danger">0</span>
+              {% endif %}
+            </td>
+            <td class="text-nowrap">{{ row.request_item.response_due_date or "-" }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">Ei requesteja valitulla suodatuksella.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | Court Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+  <div>
+    <div class="mb-2">
+      <a href="/ui" class="text-decoration-none">&larr; Takaisin dashboardiin</a>
+    </div>
+    <h1 class="h3 mb-1">Caset</h1>
+    <p class="text-muted mb-0">Follow-up-suodatus ja kiinnostavuusjärjestys operatiiviseen valintaan.</p>
+  </div>
+  <div class="small text-muted">
+    Yhteensä {{ total_count }} casea · follow-up {{ followup_count }} · ei-follow-up {{ non_followup_count }}
+  </div>
+</div>
+
+<div class="card shadow-sm mb-4">
+  <div class="card-header bg-white">
+    <h2 class="h5 mb-0">Suodatus</h2>
+  </div>
+  <div class="card-body">
+    <form method="get" action="/ui/cases" class="row g-3 align-items-end">
+      <div class="col-12 col-md-4 col-xl-3">
+        <label for="followup" class="form-label">Follow-up</label>
+        <select id="followup" name="followup" class="form-select">
+          <option value="all" {% if followup_filter == "all" %}selected{% endif %}>Kaikki</option>
+          <option value="yes" {% if followup_filter == "yes" %}selected{% endif %}>Vain valitut</option>
+          <option value="no" {% if followup_filter == "no" %}selected{% endif %}>Vain ei-valitut</option>
+        </select>
+      </div>
+
+      <div class="col-12 col-md-4 col-xl-3">
+        <label for="sort" class="form-label">Järjestys</label>
+        <select id="sort" name="sort" class="form-select">
+          <option value="interest_desc" {% if sort_by == "interest_desc" %}selected{% endif %}>Kiinnostavuus ↓</option>
+          <option value="interest_asc" {% if sort_by == "interest_asc" %}selected{% endif %}>Kiinnostavuus ↑</option>
+          <option value="newest" {% if sort_by == "newest" %}selected{% endif %}>Uusimmat</option>
+        </select>
+      </div>
+
+      <div class="col-12 col-md-4 col-xl-3 d-flex gap-2">
+        <button type="submit" class="btn btn-primary">Suodata</button>
+        <a href="/ui/cases" class="btn btn-outline-secondary">Nollaa</a>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-white">
+    <h2 class="h5 mb-0">Case-lista</h2>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Court</th>
+            <th>Otsikko</th>
+            <th>Follow-up</th>
+            <th>Score</th>
+            <th>Requestit</th>
+            <th>Dokumentit</th>
+            <th>Ensimmäinen käsittely</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for row in rows %}
+          <tr>
+            <td class="text-nowrap">
+              <a href="/ui/cases/{{ row.case_item.id }}" class="text-decoration-none fw-semibold">#{{ row.case_item.id }}</a>
+            </td>
+            <td>{{ row.case_item.court.name if row.case_item.court else "-" }}</td>
+            <td class="text-break">{{ row.case_item.title or "-" }}</td>
+            <td>
+              {% if row.case_item.selected_for_followup %}
+              <span class="badge text-bg-warning">Valittu</span>
+              {% else %}
+              <span class="badge text-bg-light">Ei</span>
+              {% endif %}
+            </td>
+            <td>{{ row.case_item.interest_score if row.case_item.interest_score is not none else "-" }}</td>
+            <td>{{ row.request_count }}</td>
+            <td>{{ row.document_count }}</td>
+            <td class="text-nowrap">{{ row.first_hearing_date or "-" }}</td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="8" class="text-center text-muted py-4">Ei caseja valitulla suodatuksella.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}
