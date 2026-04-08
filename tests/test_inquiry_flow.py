@@ -137,7 +137,10 @@ def test_end_to_end_inquiry_to_cases_flow(client):
 
     assert inquiry_1["status"] == "draft"
     assert inquiry_1["recipient_email"] == "paijat-hame.ko@oikeus.fi"
-    assert "Tiedustelu rikosasioiden käsittelyistä" in inquiry_1["subject"]
+    assert "Päijät-Hämeen käräjäoikeus" in inquiry_1["subject"]
+    assert "rikosasioiden käsittelytiedot" in inquiry_1["subject"]
+    assert "2026-04-01" in inquiry_1["subject"]
+    assert "2026-04-30" in inquiry_1["subject"]
 
     approve_response = client.post(f"/inquiries/{inquiry_1_id}/approve")
     assert approve_response.status_code == 200, approve_response.text

@@ -1,5 +1,5 @@
 import re
-from datetime import datetime
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
@@ -173,7 +173,7 @@ def send_single_inquiry(inquiry_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=500, detail=f"Sending failed: {str(e)}")
 
     item.status = "sent"
-    item.sent_at = datetime.utcnow().isoformat()
+    item.sent_at = datetime.now(UTC).isoformat()
 
     if item.batch:
         sibling_statuses = [inquiry.status for inquiry in item.batch.inquiries]
@@ -216,7 +216,7 @@ def send_all_approved_inquiries(db: Session = Depends(get_db)):
                 body=item.body,
             )
             item.status = "sent"
-            item.sent_at = datetime.utcnow().isoformat()
+            item.sent_at = datetime.now(UTC).isoformat()
             results.append(
                 {
                     "inquiry_id": item.id,
@@ -273,7 +273,7 @@ def create_inquiry_message(
     db.add(item)
     db.flush()
 
-    timestamp = payload.received_at or datetime.utcnow().isoformat()
+    timestamp = payload.received_at or datetime.now(UTC).isoformat()
 
     if payload.message_type == "ack":
         inquiry.acknowledged_at = timestamp

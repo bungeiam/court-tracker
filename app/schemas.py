@@ -1,6 +1,6 @@
 from typing import Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
 
 class CourtBase(BaseModel):
@@ -18,8 +18,7 @@ class CourtCreate(CourtBase):
 class CourtResponse(CourtBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InquiryBatchBase(BaseModel):
@@ -45,8 +44,7 @@ class InquiryBatchUpdate(BaseModel):
 class InquiryBatchResponse(InquiryBatchBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InquiryBase(BaseModel):
@@ -82,8 +80,7 @@ class InquiryUpdate(BaseModel):
 class InquiryResponse(InquiryBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InquiryMessageBase(BaseModel):
@@ -105,8 +102,7 @@ class InquiryMessageResponse(InquiryMessageBase):
     id: int
     inquiry_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class InquiryBatchGeneratePayload(BaseModel):
@@ -127,8 +123,7 @@ class HearingDateResponse(HearingDateBase):
     id: int
     case_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class PartyBase(BaseModel):
@@ -145,8 +140,7 @@ class PartyResponse(PartyBase):
     id: int
     case_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RequestBase(BaseModel):
@@ -165,8 +159,7 @@ class RequestResponse(RequestBase):
     id: int
     case_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class RequestUpdate(BaseModel):
@@ -201,8 +194,7 @@ class DocumentResponse(DocumentBase):
     id: int
     case_id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class DocumentUpdate(BaseModel):
@@ -242,8 +234,7 @@ class CaseCreate(CaseBase):
 class CaseResponse(CaseBase):
     id: int
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class CaseDetailResponse(CaseResponse):
