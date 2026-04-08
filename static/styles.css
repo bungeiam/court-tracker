@@ -1,0 +1,31 @@
+/* static/styles.css */
+body {
+    min-height: 100vh;
+}
+
+.dashboard-stat-card {
+    border: 0;
+}
+
+.card {
+    border-radius: 0.9rem;
+}
+
+.card-header {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.table td,
+.table th {
+    vertical-align: middle;
+}
+
+.table-note {
+    max-width: 420px;
+    white-space: normal;
+    word-break: break-word;
+}
+
+.badge {
+    font-weight: 500;
+}

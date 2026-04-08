@@ -1,0 +1,215 @@
+<!-- templates/dashboard.html -->
+{% extends "base.html" %}
+
+{% block title %}Court Tracker | Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+    <div>
+        <h1 class="h3 mb-1">Dashboard</h1>
+        <p class="text-muted mb-0">
+            Kevyt käyttöliittymä court-trackerin nykyisen FastAPI-API:n päälle.
+        </p>
+    </div>
+    <div class="d-flex gap-2">
+        <a href="/docs" class="btn btn-outline-secondary btn-sm">Avaa Swagger</a>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-xl-3">
+        <div class="card shadow-sm h-100 dashboard-stat-card">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase mb-2">Inquiry-batchit</div>
+                <div class="display-6 fw-semibold">{{ stats.batch_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card shadow-sm h-100 dashboard-stat-card">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase mb-2">Inquiryt</div>
+                <div class="display-6 fw-semibold">{{ stats.inquiry_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card shadow-sm h-100 dashboard-stat-card">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase mb-2">Caset</div>
+                <div class="display-6 fw-semibold">{{ stats.case_count }}</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-xl-3">
+        <div class="card shadow-sm h-100 dashboard-stat-card">
+            <div class="card-body">
+                <div class="text-muted small text-uppercase mb-2">Requestit</div>
+                <div class="display-6 fw-semibold">{{ stats.request_count }}</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h2 class="h5 mb-0">Viimeisimmät inquiry-batchit</h2>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Nimi</th>
+                                <th>Aikaväli</th>
+                                <th>Status</th>
+                                <th>Muistiinpanot</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for batch in latest_batches %}
+                            <tr>
+                                <td class="text-nowrap">#{{ batch.id }}</td>
+                                <td>{{ batch.name }}</td>
+                                <td class="text-nowrap">{{ batch.start_date }} – {{ batch.end_date }}</td>
+                                <td><span class="badge text-bg-secondary">{{ batch.status or "-" }}</span></td>
+                                <td class="table-note">{{ batch.notes or "-" }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Ei inquiry-batcheja.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12">
+        <div class="card shadow-sm">
+            <div class="card-header bg-white">
+                <h2 class="h5 mb-0">Viimeisimmät inquiryt</h2>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Court</th>
+                                <th>Batch</th>
+                                <th>Vastaanottaja</th>
+                                <th>Status</th>
+                                <th>Lähetetty</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for inquiry in latest_inquiries %}
+                            <tr>
+                                <td class="text-nowrap">#{{ inquiry.id }}</td>
+                                <td>{{ inquiry.court.name if inquiry.court else "-" }}</td>
+                                <td>{{ inquiry.batch.name if inquiry.batch else "-" }}</td>
+                                <td>{{ inquiry.recipient_email or inquiry.recipient_name or "-" }}</td>
+                                <td><span class="badge text-bg-secondary">{{ inquiry.status or "-" }}</span></td>
+                                <td class="text-nowrap">{{ inquiry.sent_at or "-" }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="6" class="text-center text-muted py-4">Ei inquiryjä.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xxl-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h2 class="h5 mb-0">Viimeisimmät caset</h2>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Court</th>
+                                <th>Otsikko</th>
+                                <th>Status</th>
+                                <th>Kiinnostavuus</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for case in latest_cases %}
+                            <tr>
+                                <td class="text-nowrap">#{{ case.id }}</td>
+                                <td>{{ case.court.name if case.court else "-" }}</td>
+                                <td class="table-note">{{ case.title or "-" }}</td>
+                                <td><span class="badge text-bg-secondary">{{ case.status or "-" }}</span></td>
+                                <td>{{ case.interest_score if case.interest_score is not none else "-" }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Ei caseja.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-12 col-xxl-6">
+        <div class="card shadow-sm h-100">
+            <div class="card-header bg-white">
+                <h2 class="h5 mb-0">Viimeisimmät requestit</h2>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th>ID</th>
+                                <th>Case ID</th>
+                                <th>Tyyppi</th>
+                                <th>Status</th>
+                                <th>Recipient</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for request_item in latest_requests %}
+                            <tr>
+                                <td class="text-nowrap">#{{ request_item.id }}</td>
+                                <td class="text-nowrap">
+                                    {% if request_item.case %}
+                                        #{{ request_item.case.id }}
+                                    {% else %}
+                                        {{ request_item.case_id }}
+                                    {% endif %}
+                                </td>
+                                <td>{{ request_item.request_type }}</td>
+                                <td><span class="badge text-bg-secondary">{{ request_item.status or "-" }}</span></td>
+                                <td>{{ request_item.recipient_email or request_item.recipient_name or "-" }}</td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="5" class="text-center text-muted py-4">Ei requesteja.</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
