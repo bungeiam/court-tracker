@@ -113,6 +113,9 @@
           <form method="post" action="/ui/inquiries/{{ inquiry.id }}/create-cases">
             <button type="submit" class="btn btn-outline-success w-100">Create cases latest response from</button>
           </form>
+          <div class="alert alert-success mb-0 small">
+            Tällä inquiryllä on vähintään yksi <code>response</code>-viesti, joten case-luonti voidaan ajaa.
+          </div>
           {% else %}
           <div class="alert alert-light border mb-0">
             Create cases tulee näkyviin, kun inquiryllä on vähintään yksi <code>response</code>-viesti.
@@ -126,7 +129,7 @@
   <div class="col-12 col-xl-8">
     <div class="card shadow-sm mb-4">
       <div class="card-header bg-white">
-        <h2 class="h5 mb-0">Viesti</h2>
+        <h2 class="h5 mb-0">Alkuperäinen inquiry</h2>
       </div>
       <div class="card-body">
         <div class="mb-3">
@@ -141,55 +144,171 @@
       </div>
     </div>
 
+    {% set thread_messages = messages|sort(attribute='id') %}
+    {% set response_messages = thread_messages|selectattr('message_type', 'equalto', 'response')|list %}
+
     <div class="card shadow-sm">
-      <div class="card-header bg-white">
-        <h2 class="h5 mb-0">Messages</h2>
-      </div>
-      <div class="card-body p-0">
-        <div class="table-responsive">
-          <table class="table table-hover align-middle mb-0">
-            <thead class="table-light">
-              <tr>
-                <th>ID</th>
-                <th>Tyyppi</th>
-                <th>Lähettäjä</th>
-                <th>Subject</th>
-                <th>Received</th>
-                <th>Liitepolku</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for message in messages %}
-              <tr>
-                <td class="text-nowrap">#{{ message.id }}</td>
-                <td>
-                  {{ message.message_type }}
-                  {% if message.message_type == "response" %}
-                  <span class="badge text-bg-success ms-2">case source</span>
-                  {% endif %}
-                </td>
-                <td>{{ message.sender or "-" }}</td>
-                <td>{{ message.subject or "-" }}</td>
-                <td class="text-nowrap">{{ message.received_at or "-" }}</td>
-                <td class="text-break">{{ message.file_path or "-" }}</td>
-              </tr>
-              <tr class="table-light">
-                <td colspan="6">
-                  <div class="small text-muted mb-1">Body</div>
-                  <div style="white-space: pre-wrap;">{{ message.body or "-" }}</div>
-                  {% if message.notes %}
-                  <div class="mt-2 small text-muted">Notes: {{ message.notes }}</div>
-                  {% endif %}
-                </td>
-              </tr>
-              {% else %}
-              <tr>
-                <td colspan="6" class="text-center text-muted py-4">Ei message-rivejä.</td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
+      <div class="card-header bg-white d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+        <div>
+          <h2 class="h5 mb-0">Sähköpostiviestiketju</h2>
         </div>
+        <div class="small text-muted">
+          {{ thread_messages|length }} viestiä
+          {% if response_messages %}
+          · {{ response_messages|length }} response-viestiä
+          {% endif %}
+        </div>
+      </div>
+
+      <div class="card-body">
+        {% if response_messages %}
+        <div class="alert alert-success d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+          <div>
+            <div class="fw-semibold">Response-viesti löytyi</div>
+            <div class="small">
+              Viestiketjusta löytyy vähintään yksi <code>response</code>-tyyppinen viesti, jota create-cases käyttää.
+            </div>
+          </div>
+          <div class="small text-muted">
+            Uusin response:
+            #{{ (response_messages|last).id }}
+          </div>
+        </div>
+        {% endif %}
+
+        {% if thread_messages %}
+        <div class="d-flex flex-column gap-3">
+          {% for message in thread_messages %}
+          {% set is_response = message.message_type == "response" %}
+          {% set is_sent = message.message_type == "sent" %}
+          {% set is_ack = message.message_type == "ack" %}
+          {% set is_other = message.message_type not in ["sent", "ack", "response"] %}
+
+          {% if message.received_at %}
+            {% set display_time = message.received_at %}
+          {% elif is_sent and inquiry.sent_at %}
+            {% set display_time = inquiry.sent_at %}
+          {% elif is_ack and inquiry.acknowledged_at %}
+            {% set display_time = inquiry.acknowledged_at %}
+          {% elif is_response and inquiry.responded_at %}
+            {% set display_time = inquiry.responded_at %}
+          {% else %}
+            {% set display_time = "-" %}
+          {% endif %}
+
+          {% if is_response %}
+            {% set card_class = "border-success bg-success-subtle" %}
+            {% set badge_class = "text-bg-success" %}
+          {% elif is_sent %}
+            {% set card_class = "border-primary" %}
+            {% set badge_class = "text-bg-primary" %}
+          {% elif is_ack %}
+            {% set card_class = "border-warning" %}
+            {% set badge_class = "text-bg-warning" %}
+          {% else %}
+            {% set card_class = "border-secondary" %}
+            {% set badge_class = "text-bg-secondary" %}
+          {% endif %}
+
+          <div class="card {{ card_class }}">
+            <div class="card-body">
+              <div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-3">
+                <div class="d-flex flex-wrap align-items-center gap-2">
+                  <span class="badge {{ badge_class }}">{{ message.message_type }}</span>
+
+                  {% if is_response %}
+                  <span class="badge text-bg-light border border-success text-success-emphasis">
+                    case source
+                  </span>
+                  {% endif %}
+
+                  <span class="small text-muted">Message #{{ message.id }}</span>
+                </div>
+
+                <div class="small text-muted text-lg-end">
+                  <div><strong>Aika:</strong> {{ display_time }}</div>
+                </div>
+              </div>
+
+              <div class="row g-3 mb-3">
+                <div class="col-12 col-lg-6">
+                  <div class="small text-muted mb-1">
+                    {% if is_sent %}
+                    Lähettäjä
+                    {% else %}
+                    Lähettäjä
+                    {% endif %}
+                  </div>
+                  <div class="fw-semibold">
+                    {% if message.sender %}
+                      {{ message.sender }}
+                    {% elif is_sent %}
+                      Court Tracker / lähetyslogiikka
+                    {% else %}
+                      -
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                  <div class="small text-muted mb-1">Vastaanottaja</div>
+                  <div class="fw-semibold">
+                    {% if inquiry.recipient_email %}
+                      {{ inquiry.recipient_email }}
+                    {% elif inquiry.recipient_name %}
+                      {{ inquiry.recipient_name }}
+                    {% else %}
+                      -
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <div class="small text-muted mb-1">Subject</div>
+                <div class="fw-semibold">
+                  {{ message.subject or inquiry.subject or "-" }}
+                </div>
+              </div>
+
+              <div class="mb-3">
+                <div class="small text-muted mb-1">Body</div>
+                <div class="border rounded p-3 bg-body-tertiary" style="white-space: pre-wrap;">{{ message.body or "-" }}</div>
+              </div>
+
+              <div class="row g-3">
+                <div class="col-12 col-lg-6">
+                  <div class="border rounded p-3 h-100 bg-white">
+                    <div class="small text-muted mb-2">Metatiedot</div>
+                    <div><strong>Type:</strong> {{ message.message_type or "-" }}</div>
+                    <div><strong>Received:</strong> {{ message.received_at or "-" }}</div>
+                    <div><strong>MIME:</strong> {{ message.mime_type or "-" }}</div>
+                    {% if message.notes %}
+                    <div class="mt-2"><strong>Notes:</strong> {{ message.notes }}</div>
+                    {% endif %}
+                  </div>
+                </div>
+
+                <div class="col-12 col-lg-6">
+                  <div class="border rounded p-3 h-100 bg-white">
+                    <div class="small text-muted mb-2">Liittyvät tiedostot / viite</div>
+                    {% if message.file_path %}
+                    <div class="text-break"><strong>File path:</strong> {{ message.file_path }}</div>
+                    {% else %}
+                    <div class="text-muted">Ei liite- tai tiedostopolkua tallennettuna.</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-4">
+          Ei message-rivejä.
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
