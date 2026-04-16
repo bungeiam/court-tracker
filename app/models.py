@@ -1,4 +1,4 @@
-from sqlalchemy import Column, ForeignKey, Integer, Text
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, Text
 from sqlalchemy.orm import relationship
 
 from app.database import Base
@@ -13,6 +13,7 @@ class Court(Base):
     city = Column(Text, nullable=True)
     email = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
+    active = Column(Boolean, nullable=False, default=True)
 
     cases = relationship("Case", back_populates="court")
     inquiries = relationship("Inquiry", back_populates="court")

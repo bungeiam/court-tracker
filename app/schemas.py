@@ -1,5 +1,3 @@
-# app/schemas.py
-
 from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
@@ -11,10 +9,20 @@ class CourtBase(BaseModel):
     city: Optional[str] = None
     email: Optional[str] = None
     notes: Optional[str] = None
+    active: bool = True
 
 
 class CourtCreate(CourtBase):
     pass
+
+
+class CourtUpdate(BaseModel):
+    name: Optional[str] = None
+    court_level: Optional[str] = None
+    city: Optional[str] = None
+    email: Optional[str] = None
+    notes: Optional[str] = None
+    active: Optional[bool] = None
 
 
 class CourtResponse(CourtBase):

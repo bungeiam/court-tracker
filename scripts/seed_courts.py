@@ -9,6 +9,7 @@ COURTS = [
         "city": "Maarianhamina",
         "email": "aland.tr@om.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Etelä-Karjalan käräjäoikeus",
@@ -16,6 +17,7 @@ COURTS = [
         "city": "Lappeenranta",
         "email": "etela-karjala.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Etelä-Pohjanmaan käräjäoikeus",
@@ -23,6 +25,7 @@ COURTS = [
         "city": "Seinäjoki",
         "email": "etela-pohjanmaa.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Etelä-Savon käräjäoikeus",
@@ -30,6 +33,7 @@ COURTS = [
         "city": "Mikkeli",
         "email": "etela-savo.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Helsingin käräjäoikeus",
@@ -37,6 +41,7 @@ COURTS = [
         "city": "Helsinki",
         "email": "helsinki.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Itä-Uudenmaan käräjäoikeus",
@@ -44,6 +49,7 @@ COURTS = [
         "city": "Porvoo",
         "email": "ita-uusimaa.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Kainuun käräjäoikeus",
@@ -51,6 +57,7 @@ COURTS = [
         "city": "Kajaani",
         "email": "kainuu.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Kanta-Hämeen käräjäoikeus",
@@ -58,6 +65,7 @@ COURTS = [
         "city": "Hämeenlinna",
         "email": "kanta-hame.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Keski-Suomen käräjäoikeus",
@@ -65,6 +73,7 @@ COURTS = [
         "city": "Jyväskylä",
         "email": "keski-suomi.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Kymenlaakson käräjäoikeus",
@@ -72,6 +81,7 @@ COURTS = [
         "city": "Kouvola",
         "email": "kymenlaakso.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Lapin käräjäoikeus",
@@ -79,6 +89,7 @@ COURTS = [
         "city": "Rovaniemi",
         "email": "lappi.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Länsi-Uudenmaan käräjäoikeus",
@@ -86,6 +97,7 @@ COURTS = [
         "city": "Espoo",
         "email": "lansi-uusimaa.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Oulun käräjäoikeus",
@@ -93,6 +105,7 @@ COURTS = [
         "city": "Oulu",
         "email": "oulu.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Pirkanmaan käräjäoikeus",
@@ -100,6 +113,7 @@ COURTS = [
         "city": "Tampere",
         "email": "pirkanmaa.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Pohjanmaan käräjäoikeus",
@@ -107,6 +121,7 @@ COURTS = [
         "city": "Vaasa",
         "email": "pohjanmaa.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Pohjois-Karjalan käräjäoikeus",
@@ -114,6 +129,7 @@ COURTS = [
         "city": "Joensuu",
         "email": "pohjois-karjala.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Pohjois-Savon käräjäoikeus",
@@ -121,6 +137,7 @@ COURTS = [
         "city": "Kuopio",
         "email": "pohjois-savo.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Päijät-Hämeen käräjäoikeus",
@@ -128,6 +145,7 @@ COURTS = [
         "city": "Lahti",
         "email": "paijat-hame.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Satakunnan käräjäoikeus",
@@ -135,6 +153,7 @@ COURTS = [
         "city": "Pori",
         "email": "satakunta.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Varsinais-Suomen käräjäoikeus",
@@ -142,6 +161,7 @@ COURTS = [
         "city": "Turku",
         "email": "varsinais-suomi.ko@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Helsingin hovioikeus",
@@ -149,6 +169,7 @@ COURTS = [
         "city": "Helsinki",
         "email": "helsinki.ho@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Itä-Suomen hovioikeus",
@@ -156,6 +177,7 @@ COURTS = [
         "city": "Kuopio",
         "email": "ita-suomi.ho@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Rovaniemen hovioikeus",
@@ -163,6 +185,7 @@ COURTS = [
         "city": "Rovaniemi",
         "email": "rovaniemi.ho@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Turun hovioikeus",
@@ -170,6 +193,7 @@ COURTS = [
         "city": "Turku",
         "email": "turku.ho@oikeus.fi",
         "notes": None,
+        "active": True,
     },
     {
         "name": "Vaasan hovioikeus",
@@ -177,6 +201,7 @@ COURTS = [
         "city": "Vaasa",
         "email": "vaasa.ho@oikeus.fi",
         "notes": None,
+        "active": True,
     },
 ]
 
@@ -195,6 +220,7 @@ def seed_courts() -> None:
                 existing.city = item["city"]
                 existing.email = item["email"]
                 existing.notes = item["notes"]
+                existing.active = item["active"]
                 updated_count += 1
             else:
                 db.add(Court(**item))
