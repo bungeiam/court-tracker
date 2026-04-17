@@ -1,4 +1,5 @@
 from collections import Counter
+from datetime import UTC, datetime
 from pathlib import Path
 import re
 from types import SimpleNamespace
@@ -12,6 +13,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import (
     Case,
+    Court,
     Document,
     Inquiry,
     InquiryBatch,
@@ -120,6 +122,44 @@ def _normalize_case_sort(value: str | None) -> str:
 def _count_by_status(items: list) -> dict[str, int]:
     counts = Counter((item.status or "unknown") for item in items)
     return dict(sorted(counts.items(), key=lambda pair: pair[0]))
+
+
+def _update_inquiry_batch_status(batch: InquiryBatch | None) -> None:
+    if not batch:
+        return
+
+    statuses = [inquiry.status for inquiry in (batch.inquiries or [])]
+
+    if statuses and all(status == "responded" for status in statuses):
+        batch.status = "completed"
+    elif statuses and all(status in {"sent", "acknowledged", "responded"} for status in statuses):
+        batch.status = "sent"
+    elif any(status in {"sent", "acknowledged", "responded"} for status in statuses):
+        batch.status = "in_progress"
+    elif any(status == "approved" for status in statuses):
+        batch.status = "generated"
+    else:
+        batch.status = "draft"
+
+
+def _build_batch_status_summary(inquiries: list[Inquiry]) -> dict[str, int]:
+    summary = {
+        "draft": 0,
+        "approved": 0,
+        "sent": 0,
+        "acknowledged": 0,
+        "responded": 0,
+        "other": 0,
+    }
+
+    for inquiry in inquiries:
+        status = (inquiry.status or "").strip().lower()
+        if status in summary and status != "other":
+            summary[status] += 1
+        else:
+            summary["other"] += 1
+
+    return summary
 
 
 def _get_inquiry_ids_with_created_cases(db: Session) -> set[int]:
@@ -361,6 +401,8 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
         "request_count": db.query(CaseRequest).count(),
         "open_request_count": db.query(CaseRequest).filter(CaseRequest.status != "replied").count(),
         "document_count": db.query(Document).count(),
+        "court_count": db.query(Court).count(),
+        "active_court_count": db.query(Court).filter(Court.active == True).count(),
     }
 
     work_queues = {
@@ -390,6 +432,45 @@ def dashboard(request: Request, db: Session = Depends(get_db)):
                 },
             },
         ),
+    )
+
+
+@router.get("/ui/courts", response_class=HTMLResponse)
+def court_list(request: Request, db: Session = Depends(get_db)):
+    courts = db.query(Court).order_by(Court.court_level.asc(), Court.name.asc()).all()
+
+    return templates.TemplateResponse(
+        request,
+        "courts_list.html",
+        _build_template_context(
+            request,
+            {
+                "page_title": "Courts",
+                "courts": courts,
+                "total_count": len(courts),
+                "active_count": len([court for court in courts if court.active]),
+                "inactive_count": len([court for court in courts if not court.active]),
+            },
+        ),
+    )
+
+
+@router.post("/ui/courts/{court_id}/toggle-active")
+def toggle_court_active_ui(
+    court_id: int,
+    db: Session = Depends(get_db),
+):
+    court = db.query(Court).filter(Court.id == court_id).first()
+    if not court:
+        return _redirect_with_message("/ui/courts", error="Court not found")
+
+    court.active = not court.active
+    db.commit()
+
+    state_text = "aktivoitiin" if court.active else "poistettiin aktiivisista"
+    return _redirect_with_message(
+        "/ui/courts",
+        success=f"{court.name} {state_text}.",
     )
 
 
@@ -495,6 +576,7 @@ def inquiry_batch_detail(
         _not_found("Inquiry batch")
 
     inquiries = sorted(batch.inquiries or [], key=lambda item: item.id, reverse=True)
+    status_summary = _build_batch_status_summary(inquiries)
 
     return templates.TemplateResponse(
         request,
@@ -505,8 +587,98 @@ def inquiry_batch_detail(
                 "page_title": f"Inquiry batch #{batch.id}",
                 "batch": batch,
                 "inquiries": inquiries,
+                "status_summary": status_summary,
             },
         ),
+    )
+
+
+@router.post("/ui/inquiry-batches/{batch_id}/approve-all")
+def approve_batch_ui(batch_id: int, db: Session = Depends(get_db)):
+    batch = (
+        db.query(InquiryBatch)
+        .options(joinedload(InquiryBatch.inquiries))
+        .filter(InquiryBatch.id == batch_id)
+        .first()
+    )
+    if not batch:
+        return _redirect_with_message("/ui", error="Inquiry batch not found")
+
+    approved_count = 0
+
+    for inquiry in batch.inquiries:
+        if inquiry.status == "draft":
+            approve_inquiry_api(inquiry_id=inquiry.id, db=db)
+            approved_count += 1
+
+    batch = (
+        db.query(InquiryBatch)
+        .options(joinedload(InquiryBatch.inquiries))
+        .filter(InquiryBatch.id == batch_id)
+        .first()
+    )
+    _update_inquiry_batch_status(batch)
+    db.commit()
+
+    return _redirect_with_message(
+        f"/ui/inquiry-batches/{batch_id}",
+        success=f"{approved_count} inquiryä hyväksyttiin.",
+    )
+
+
+@router.post("/ui/inquiry-batches/{batch_id}/send")
+def send_batch_ui(batch_id: int, db: Session = Depends(get_db)):
+    batch = (
+        db.query(InquiryBatch)
+        .options(joinedload(InquiryBatch.inquiries))
+        .filter(InquiryBatch.id == batch_id)
+        .first()
+    )
+    if not batch:
+        return _redirect_with_message("/ui", error="Inquiry batch not found")
+
+    sent_count = 0
+    skipped_count = 0
+    errors: list[str] = []
+
+    inquiry_ids = [item.id for item in batch.inquiries]
+
+    for inquiry_id in inquiry_ids:
+        inquiry = db.query(Inquiry).filter(Inquiry.id == inquiry_id).first()
+        if not inquiry:
+            continue
+
+        if inquiry.status != "approved":
+            skipped_count += 1
+            continue
+
+        try:
+            send_single_inquiry_api(inquiry_id=inquiry.id, db=db)
+            sent_count += 1
+        except HTTPException as exc:
+            errors.append(f"Inquiry #{inquiry.id}: {exc.detail}")
+
+    batch = (
+        db.query(InquiryBatch)
+        .options(joinedload(InquiryBatch.inquiries))
+        .filter(InquiryBatch.id == batch_id)
+        .first()
+    )
+    _update_inquiry_batch_status(batch)
+    db.commit()
+
+    if errors:
+        error_text = " | ".join(errors[:3])
+        if len(errors) > 3:
+            error_text += f" | ... ja {len(errors) - 3} muuta virhettä"
+        return _redirect_with_message(
+            f"/ui/inquiry-batches/{batch_id}",
+            error=f"Lähetettiin {sent_count}, skipattiin {skipped_count}. Virheitä: {error_text}",
+        )
+
+    return _redirect_with_message(
+        f"/ui/inquiry-batches/{batch_id}",
+        success=f"Lähetettiin {sent_count} inquiryä. Skipattiin {skipped_count}.",
     )
 
 
@@ -575,6 +747,37 @@ def send_inquiry_ui(
         return _redirect_with_message(detail_path, error=exc.detail)
 
     return _redirect_with_message(detail_path, success="Inquiry lähetettiin.")
+
+
+@router.post("/ui/inquiries/{inquiry_id}/mark-sent")
+def mark_inquiry_sent_ui(
+    inquiry_id: int,
+    db: Session = Depends(get_db),
+):
+    inquiry = (
+        db.query(Inquiry)
+        .options(joinedload(Inquiry.batch).joinedload(InquiryBatch.inquiries))
+        .filter(Inquiry.id == inquiry_id)
+        .first()
+    )
+    if not inquiry:
+        return _redirect_with_message("/ui", error="Inquiry not found")
+
+    inquiry.status = "sent"
+    inquiry.sent_at = datetime.now(UTC).isoformat()
+
+    existing_notes = (inquiry.notes or "").strip()
+    manual_note = "Merkitty lähetetyksi manuaalisesti UI:n kautta."
+    if manual_note not in existing_notes:
+        inquiry.notes = f"{existing_notes}\n{manual_note}".strip()
+
+    _update_inquiry_batch_status(inquiry.batch)
+    db.commit()
+
+    return _redirect_with_message(
+        f"/ui/inquiry-batches/{inquiry.batch_id}",
+        success=f"Inquiry #{inquiry.id} merkittiin lähetetyksi.",
+    )
 
 
 @router.post("/ui/inquiries/{inquiry_id}/create-cases")
@@ -804,46 +1007,4 @@ def document_detail(
                 "can_delete_document": True,
             },
         ),
-    )
-
-@router.post("/ui/inquiry-batches/{batch_id}/approve-all")
-def approve_batch_ui(batch_id: int, db: Session = Depends(get_db)):
-    batch = db.query(InquiryBatch).filter(InquiryBatch.id == batch_id).first()
-    if not batch:
-        return _redirect_with_message("/ui", error="Batch not found")
-
-    count = 0
-
-    for inquiry in batch.inquiries:
-        if inquiry.status == "draft":
-            inquiry.status = "approved"
-            count += 1
-
-    db.commit()
-
-    return _redirect_with_message(
-        f"/ui/inquiry-batches/{batch_id}",
-        success=f"{count} inquiryä hyväksyttiin.",
-    )
-
-
-@router.post("/ui/inquiry-batches/{batch_id}/send")
-def send_batch_ui(batch_id: int, db: Session = Depends(get_db)):
-    batch = db.query(InquiryBatch).filter(InquiryBatch.id == batch_id).first()
-    if not batch:
-        return _redirect_with_message("/ui", error="Batch not found")
-
-    try:
-        # käytetään olemassa olevaa endpointtia
-        from app.routes.inquiries import send_all_approved_inquiries
-        send_all_approved_inquiries(db=db)
-    except Exception as e:
-        return _redirect_with_message(
-            f"/ui/inquiry-batches/{batch_id}",
-            error=f"Lähetys epäonnistui: {str(e)}",
-        )
-
-    return _redirect_with_message(
-        f"/ui/inquiry-batches/{batch_id}",
-        success="Batchin inquiryt lähetettiin.",
     )

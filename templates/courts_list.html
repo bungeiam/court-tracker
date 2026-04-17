@@ -1,0 +1,75 @@
+{% extends "base.html" %}
+
+{% block title %}{{ page_title }} | Court Tracker{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="h3 mb-1">Courts</h1>
+    <p class="text-muted mb-0">Hallitse, mitkä oikeudet ovat mukana tulevissa kuukausiajoissa.</p>
+  </div>
+  <div class="d-flex gap-2 flex-wrap">
+    <span class="badge text-bg-secondary fs-6">Yhteensä: {{ total_count }}</span>
+    <span class="badge text-bg-success fs-6">Aktiivisia: {{ active_count }}</span>
+    <span class="badge text-bg-warning fs-6">Ei aktiivisia: {{ inactive_count }}</span>
+  </div>
+</div>
+
+<div class="card shadow-sm">
+  <div class="card-header bg-white">
+    <h2 class="h5 mb-0">Oikeuslista</h2>
+  </div>
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-hover align-middle mb-0">
+        <thead class="table-light">
+          <tr>
+            <th>ID</th>
+            <th>Nimi</th>
+            <th>Taso</th>
+            <th>Kaupunki</th>
+            <th>Sähköposti</th>
+            <th>Status</th>
+            <th class="text-end">Toiminnot</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for court in courts %}
+          <tr>
+            <td class="text-nowrap">#{{ court.id }}</td>
+            <td class="fw-semibold">{{ court.name }}</td>
+            <td>{{ court.court_level }}</td>
+            <td>{{ court.city or "-" }}</td>
+            <td>{{ court.email or "-" }}</td>
+            <td>
+              {% if court.active %}
+              <span class="badge text-bg-success">active</span>
+              {% else %}
+              <span class="badge text-bg-secondary">inactive</span>
+              {% endif %}
+            </td>
+            <td class="text-end">
+              <form method="post" action="/ui/courts/{{ court.id }}/toggle-active" class="d-inline">
+                {% if court.active %}
+                <button type="submit" class="btn btn-outline-warning btn-sm">
+                  Deactivate
+                </button>
+                {% else %}
+                <button type="submit" class="btn btn-outline-success btn-sm">
+                  Activate
+                </button>
+                {% endif %}
+              </form>
+            </td>
+          </tr>
+          {% else %}
+          <tr>
+            <td colspan="7" class="text-center text-muted py-4">Ei court-tietoja.</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

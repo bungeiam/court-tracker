@@ -9,6 +9,7 @@
     <p class="text-muted mb-0">Operatiivinen näkymä inquiryjen, casejen, requestien ja dokumenttien seurantaan.</p>
   </div>
   <div class="d-flex gap-2 flex-wrap">
+    <a href="/ui/courts" class="btn btn-outline-secondary btn-sm">Courts</a>
     <a href="/ui/inquiries" class="btn btn-outline-secondary btn-sm">Kaikki inquiryt</a>
     <a href="/ui/cases" class="btn btn-outline-secondary btn-sm">Kaikki caset</a>
     <a href="/ui/requests" class="btn btn-outline-secondary btn-sm">Kaikki requestit</a>
@@ -16,6 +17,22 @@
 </div>
 
 <div class="row g-3 mb-4">
+  <div class="col-6 col-md-4 col-xxl">
+    <div class="card shadow-sm h-100">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Courts yhteensä</div>
+        <div class="display-6 fw-semibold">{{ stats.court_count }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-xxl">
+    <div class="card shadow-sm h-100 border-warning-subtle">
+      <div class="card-body">
+        <div class="text-muted small mb-1">Aktiiviset courts</div>
+        <div class="display-6 fw-semibold">{{ stats.active_court_count }}</div>
+      </div>
+    </div>
+  </div>
   <div class="col-6 col-md-4 col-xxl">
     <div class="card shadow-sm h-100">
       <div class="card-body">
