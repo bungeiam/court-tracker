@@ -14,6 +14,55 @@
         <h1 class="h4 mb-0">Inquiry batch #{{ batch.id }}</h1>
       </div>
       <div class="card-body">
+        <div class="d-flex gap-2 mb-3 flex-wrap">
+          <form method="post" action="/ui/inquiry-batches/{{ batch.id }}/approve-all">
+            <button type="submit" class="btn btn-outline-primary btn-sm">
+              Approve all draft
+            </button>
+          </form>
+
+          <form method="post" action="/ui/inquiry-batches/{{ batch.id }}/send">
+            <button type="submit" class="btn btn-primary btn-sm">
+              Send batch
+            </button>
+          </form>
+        </div>
+
+        {% set ns = namespace(
+          draft=0,
+          approved=0,
+          sent=0,
+          acknowledged=0,
+          responded=0,
+          other=0
+        ) %}
+        {% for inquiry in inquiries %}
+          {% if inquiry.status == "draft" %}
+            {% set ns.draft = ns.draft + 1 %}
+          {% elif inquiry.status == "approved" %}
+            {% set ns.approved = ns.approved + 1 %}
+          {% elif inquiry.status == "sent" %}
+            {% set ns.sent = ns.sent + 1 %}
+          {% elif inquiry.status == "acknowledged" %}
+            {% set ns.acknowledged = ns.acknowledged + 1 %}
+          {% elif inquiry.status == "responded" %}
+            {% set ns.responded = ns.responded + 1 %}
+          {% else %}
+            {% set ns.other = ns.other + 1 %}
+          {% endif %}
+        {% endfor %}
+
+        <div class="mb-3 d-flex gap-2 flex-wrap">
+          <span class="badge {{ status_badge_class('draft') }}">draft: {{ ns.draft }}</span>
+          <span class="badge {{ status_badge_class('approved') }}">approved: {{ ns.approved }}</span>
+          <span class="badge {{ status_badge_class('sent') }}">sent: {{ ns.sent }}</span>
+          <span class="badge {{ status_badge_class('acknowledged') }}">acknowledged: {{ ns.acknowledged }}</span>
+          <span class="badge {{ status_badge_class('responded') }}">responded: {{ ns.responded }}</span>
+          {% if ns.other %}
+          <span class="badge text-bg-secondary">other: {{ ns.other }}</span>
+          {% endif %}
+        </div>
+
         <dl class="row mb-0">
           <dt class="col-sm-4">Nimi</dt>
           <dd class="col-sm-8">{{ batch.name }}</dd>
@@ -22,7 +71,9 @@
           <dd class="col-sm-8">{{ batch.start_date }} – {{ batch.end_date }}</dd>
 
           <dt class="col-sm-4">Status</dt>
-          <dd class="col-sm-8"><span class="badge text-bg-secondary">{{ batch.status or "-" }}</span></dd>
+          <dd class="col-sm-8">
+            <span class="badge {{ status_badge_class(batch.status) }}">{{ batch.status or "-" }}</span>
+          </dd>
 
           <dt class="col-sm-4">Inquiryjä</dt>
           <dd class="col-sm-8">{{ inquiries|length }}</dd>
@@ -36,8 +87,9 @@
 
   <div class="col-12 col-xl-8">
     <div class="card shadow-sm h-100">
-      <div class="card-header bg-white">
+      <div class="card-header bg-white d-flex justify-content-between align-items-center">
         <h2 class="h5 mb-0">Batchiin liittyvät inquiryt</h2>
+        <span class="text-muted small">{{ inquiries|length }} kpl</span>
       </div>
       <div class="card-body p-0">
         <div class="table-responsive">
@@ -61,7 +113,9 @@
                 </td>
                 <td>{{ inquiry.court.name if inquiry.court else "-" }}</td>
                 <td>{{ inquiry.recipient_email or inquiry.recipient_name or "-" }}</td>
-                <td><span class="badge text-bg-secondary">{{ inquiry.status or "-" }}</span></td>
+                <td>
+                  <span class="badge {{ status_badge_class(inquiry.status) }}">{{ inquiry.status or "-" }}</span>
+                </td>
                 <td class="text-nowrap">{{ inquiry.sent_at or "-" }}</td>
               </tr>
               {% else %}

@@ -805,3 +805,45 @@ def document_detail(
             },
         ),
     )
+
+@router.post("/ui/inquiry-batches/{batch_id}/approve-all")
+def approve_batch_ui(batch_id: int, db: Session = Depends(get_db)):
+    batch = db.query(InquiryBatch).filter(InquiryBatch.id == batch_id).first()
+    if not batch:
+        return _redirect_with_message("/ui", error="Batch not found")
+
+    count = 0
+
+    for inquiry in batch.inquiries:
+        if inquiry.status == "draft":
+            inquiry.status = "approved"
+            count += 1
+
+    db.commit()
+
+    return _redirect_with_message(
+        f"/ui/inquiry-batches/{batch_id}",
+        success=f"{count} inquiryä hyväksyttiin.",
+    )
+
+
+@router.post("/ui/inquiry-batches/{batch_id}/send")
+def send_batch_ui(batch_id: int, db: Session = Depends(get_db)):
+    batch = db.query(InquiryBatch).filter(InquiryBatch.id == batch_id).first()
+    if not batch:
+        return _redirect_with_message("/ui", error="Batch not found")
+
+    try:
+        # käytetään olemassa olevaa endpointtia
+        from app.routes.inquiries import send_all_approved_inquiries
+        send_all_approved_inquiries(db=db)
+    except Exception as e:
+        return _redirect_with_message(
+            f"/ui/inquiry-batches/{batch_id}",
+            error=f"Lähetys epäonnistui: {str(e)}",
+        )
+
+    return _redirect_with_message(
+        f"/ui/inquiry-batches/{batch_id}",
+        success="Batchin inquiryt lähetettiin.",
+    )
