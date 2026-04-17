@@ -628,6 +628,8 @@ def approve_batch_ui(batch_id: int, db: Session = Depends(get_db)):
 
 @router.post("/ui/inquiry-batches/{batch_id}/send")
 def send_batch_ui(batch_id: int, db: Session = Depends(get_db)):
+    import time
+
     batch = (
         db.query(InquiryBatch)
         .options(joinedload(InquiryBatch.inquiries))
@@ -655,8 +657,10 @@ def send_batch_ui(batch_id: int, db: Session = Depends(get_db)):
         try:
             send_single_inquiry_api(inquiry_id=inquiry.id, db=db)
             sent_count += 1
+            time.sleep(10)
         except HTTPException as exc:
             errors.append(f"Inquiry #{inquiry.id}: {exc.detail}")
+            time.sleep(15)
 
     batch = (
         db.query(InquiryBatch)
