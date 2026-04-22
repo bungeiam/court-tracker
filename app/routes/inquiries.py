@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session, joinedload
 from app.database import get_db
 from app.models import Case, HearingDate, Inquiry, InquiryBatch, InquiryMessage
 from app.schemas import (
+    InquiryIngestPreviewResponse,
     InquiryMessageCreate,
     InquiryMessageResponse,
     InquiryResponse,
@@ -15,6 +16,7 @@ from app.schemas import (
 from app.services.case_service import assess_case_interest
 from app.services.email_service import send_email
 from app.services.inquiry_parser import parse_inquiry_response_body
+from app.services.inquiry_service import build_inquiry_ingest_preview
 
 router = APIRouter(prefix="/inquiries", tags=["inquiries"])
 
@@ -46,7 +48,6 @@ def _find_duplicate_case(
         return None
 
     normalized_title = _normalize_case_identity_value(title)
-
     candidate_cases = (
         db.query(Case)
         .filter(
@@ -83,6 +84,23 @@ def get_inquiry(inquiry_id: int, db: Session = Depends(get_db)):
     if not item:
         raise HTTPException(status_code=404, detail="Inquiry not found")
     return item
+
+
+@router.get(
+    "/{inquiry_id}/ingest-preview",
+    response_model=InquiryIngestPreviewResponse,
+)
+def get_inquiry_ingest_preview(inquiry_id: int, db: Session = Depends(get_db)):
+    inquiry = (
+        db.query(Inquiry)
+        .options(joinedload(Inquiry.messages))
+        .filter(Inquiry.id == inquiry_id)
+        .first()
+    )
+    if not inquiry:
+        raise HTTPException(status_code=404, detail="Inquiry not found")
+
+    return build_inquiry_ingest_preview(inquiry)
 
 
 @router.patch("/{inquiry_id}", response_model=InquiryResponse)
@@ -182,7 +200,6 @@ def send_all_approved_inquiries(db: Session = Depends(get_db)):
     )
 
     results = []
-
     for item in items:
         if not item.recipient_email:
             results.append(
@@ -265,7 +282,6 @@ def create_inquiry_message(
     db.flush()
 
     timestamp = payload.received_at or datetime.now(UTC).isoformat()
-
     if payload.message_type == "ack":
         inquiry.acknowledged_at = timestamp
         inquiry.status = "acknowledged"
@@ -339,14 +355,14 @@ def create_cases_from_inquiry(
             .order_by(InquiryMessage.id.desc())
             .first()
         )
-        if not message:
-            raise HTTPException(status_code=400, detail="No response message found for this inquiry")
+
+    if not message:
+        raise HTTPException(status_code=400, detail="No response message found for this inquiry")
 
     if not message.body or not message.body.strip():
         raise HTTPException(status_code=400, detail="Response message body is empty")
 
     source_reference = payload.overwrite_source_reference or f"Inquiry {inquiry_id} / message {message.id}"
-
     parse_result = parse_inquiry_response_body(message.body)
     parsed_rows = parse_result["parsed_rows"]
     skipped_rows = parse_result["skipped_rows"]

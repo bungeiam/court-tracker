@@ -102,7 +102,6 @@ class InquiryMessageBase(BaseModel):
     file_path: Optional[str] = None
     mime_type: Optional[str] = None
     notes: Optional[str] = None
-
     raw_subject: Optional[str] = None
     raw_sender: Optional[str] = None
     source_email_message_id: Optional[str] = None
@@ -121,6 +120,37 @@ class InquiryMessageResponse(InquiryMessageBase):
     inquiry_id: int
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class InquiryIngestPreviewMessageResponse(BaseModel):
+    id: int
+    inquiry_id: int
+    message_type: str
+    sender: Optional[str] = None
+    subject: Optional[str] = None
+    received_at: Optional[str] = None
+    raw_sender: Optional[str] = None
+    raw_subject: Optional[str] = None
+    source_email_message_id: Optional[str] = None
+    secure_link_url: Optional[str] = None
+    has_secure_link: bool
+    processing_status: str
+    processed_at: Optional[str] = None
+    fetch_attempt_count: int
+    is_processed: bool
+    notes: Optional[str] = None
+
+
+class InquiryIngestPreviewResponse(BaseModel):
+    inquiry_id: int
+    inquiry_status: str
+    total_messages: int
+    secure_link_messages: int
+    response_messages: int
+    processed_messages: int
+    unprocessed_messages: int
+    latest_secure_link_url: Optional[str] = None
+    messages: list[InquiryIngestPreviewMessageResponse]
 
 
 class InquiryBatchGeneratePayload(BaseModel):
