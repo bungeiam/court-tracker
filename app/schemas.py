@@ -103,6 +103,14 @@ class InquiryMessageBase(BaseModel):
     mime_type: Optional[str] = None
     notes: Optional[str] = None
 
+    raw_subject: Optional[str] = None
+    raw_sender: Optional[str] = None
+    source_email_message_id: Optional[str] = None
+    secure_link_url: Optional[str] = None
+    processing_status: str = "pending"
+    processed_at: Optional[str] = None
+    fetch_attempt_count: int = 0
+
 
 class InquiryMessageCreate(InquiryMessageBase):
     pass

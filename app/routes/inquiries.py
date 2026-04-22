@@ -28,6 +28,14 @@ def _normalize_case_identity_value(value: str | None) -> str:
     return " ".join((value or "").split()).strip().lower()
 
 
+def _resolve_message_sender(payload: InquiryMessageCreate) -> str | None:
+    return payload.sender if payload.sender is not None else payload.raw_sender
+
+
+def _resolve_message_subject(payload: InquiryMessageCreate) -> str | None:
+    return payload.subject if payload.subject is not None else payload.raw_subject
+
+
 def _find_duplicate_case(
     db: Session,
     court_id: int,
@@ -238,13 +246,20 @@ def create_inquiry_message(
     item = InquiryMessage(
         inquiry_id=inquiry_id,
         message_type=payload.message_type,
-        sender=payload.sender,
-        subject=payload.subject,
+        sender=_resolve_message_sender(payload),
+        subject=_resolve_message_subject(payload),
         body=payload.body,
         received_at=payload.received_at,
         file_path=payload.file_path,
         mime_type=payload.mime_type,
         notes=payload.notes,
+        raw_subject=payload.raw_subject,
+        raw_sender=payload.raw_sender,
+        source_email_message_id=payload.source_email_message_id,
+        secure_link_url=payload.secure_link_url,
+        processing_status=payload.processing_status,
+        processed_at=payload.processed_at,
+        fetch_attempt_count=payload.fetch_attempt_count,
     )
     db.add(item)
     db.flush()

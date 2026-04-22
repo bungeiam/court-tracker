@@ -1,5 +1,4 @@
 # tests/test_inquiry_flow.py
-
 import pytest
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
@@ -116,7 +115,6 @@ def test_end_to_end_inquiry_to_cases_flow(client):
     )
     assert generate_response.status_code == 200, generate_response.text
     generate_data = generate_response.json()
-
     assert generate_data["batch_id"] == batch_id
     assert generate_data["created_count"] == 2
     assert generate_data["skipped_count"] == 0
@@ -136,7 +134,6 @@ def test_end_to_end_inquiry_to_cases_flow(client):
     inquiry_1_response = client.get(f"/inquiries/{inquiry_1_id}")
     assert inquiry_1_response.status_code == 200, inquiry_1_response.text
     inquiry_1 = inquiry_1_response.json()
-
     assert inquiry_1["status"] == "draft"
     assert inquiry_1["recipient_email"] == "paijat-hame.ko@oikeus.fi"
     assert "Päijät-Hämeen käräjäoikeus" in inquiry_1["subject"]
@@ -151,7 +148,6 @@ def test_end_to_end_inquiry_to_cases_flow(client):
     send_response = client.post(f"/inquiries/{inquiry_1_id}/send")
     assert send_response.status_code == 200, send_response.text
     sent_inquiry = send_response.json()
-
     assert sent_inquiry["status"] == "sent"
     assert sent_inquiry["sent_at"] is not None
     assert len(client.sent_emails) == 1
@@ -171,11 +167,12 @@ def test_end_to_end_inquiry_to_cases_flow(client):
     assert ack_response.status_code == 200, ack_response.text
     ack_message = ack_response.json()
     assert ack_message["message_type"] == "ack"
+    assert ack_message["processing_status"] == "pending"
+    assert ack_message["fetch_attempt_count"] == 0
 
     inquiry_after_ack_response = client.get(f"/inquiries/{inquiry_1_id}")
     assert inquiry_after_ack_response.status_code == 200, inquiry_after_ack_response.text
     inquiry_after_ack = inquiry_after_ack_response.json()
-
     assert inquiry_after_ack["status"] == "acknowledged"
     assert inquiry_after_ack["acknowledged_at"] == "2026-04-02T09:15:00"
 
@@ -191,7 +188,7 @@ def test_end_to_end_inquiry_to_cases_flow(client):
                 "R 26/1301 Törkeä rattijuopumus, jatkokäsittely 28.4.2026"
             ),
             "received_at": "2026-04-03T11:30:00",
-            "notes": "Varsinainen vastaus"
+            "notes": "Varsinainen vastaus",
         },
     )
     assert response_message_response.status_code == 200, response_message_response.text
@@ -202,7 +199,6 @@ def test_end_to_end_inquiry_to_cases_flow(client):
     inquiry_after_response = client.get(f"/inquiries/{inquiry_1_id}")
     assert inquiry_after_response.status_code == 200, inquiry_after_response.text
     inquiry_after_response_data = inquiry_after_response.json()
-
     assert inquiry_after_response_data["status"] == "responded"
     assert inquiry_after_response_data["responded_at"] == "2026-04-03T11:30:00"
 
@@ -218,7 +214,6 @@ def test_end_to_end_inquiry_to_cases_flow(client):
     )
     assert create_cases_response.status_code == 200, create_cases_response.text
     create_cases_data = create_cases_response.json()
-
     assert create_cases_data["inquiry_id"] == inquiry_1_id
     assert create_cases_data["message_id"] == response_message_id
     assert create_cases_data["parsed_count"] == 3
@@ -234,7 +229,6 @@ def test_end_to_end_inquiry_to_cases_flow(client):
     assert len(cases) == 3
 
     case_ids = [case["id"] for case in cases]
-
     case_details = []
     for case_id in case_ids:
         detail_response = client.get(f"/cases/{case_id}")
@@ -297,7 +291,6 @@ def test_generate_does_not_create_duplicate_inquiries_in_same_batch(client):
     )
     assert second_generate.status_code == 200, second_generate.text
     second_data = second_generate.json()
-
     assert second_data["created_count"] == 0
     assert second_data["skipped_count"] == 2
     assert all(
@@ -318,7 +311,6 @@ def test_send_requires_approved_status(client):
         city="Lahti",
         email="paijat-hame.ko@oikeus.fi",
     )
-
     batch = create_inquiry_batch(client)
     batch_id = batch["id"]
 
@@ -332,7 +324,6 @@ def test_send_requires_approved_status(client):
     assert inquiries_response.status_code == 200, inquiries_response.text
     inquiries = inquiries_response.json()
     assert len(inquiries) == 1
-
     inquiry_id = inquiries[0]["id"]
 
     send_response = client.post(f"/inquiries/{inquiry_id}/send")
@@ -369,7 +360,6 @@ def test_create_cases_does_not_create_duplicates_when_called_twice(client):
         city="Lahti",
         email="paijat-hame.ko@oikeus.fi",
     )
-
     batch = create_inquiry_batch(client)
     batch_id = batch["id"]
 
@@ -400,7 +390,6 @@ def test_create_cases_does_not_create_duplicates_when_called_twice(client):
     )
     assert first_create_cases_response.status_code == 200, first_create_cases_response.text
     first_data = first_create_cases_response.json()
-
     assert first_data["created_count"] == 2
     assert first_data["skipped_duplicates_count"] == 0
     assert len(first_data["created_case_ids"]) == 2
@@ -411,7 +400,6 @@ def test_create_cases_does_not_create_duplicates_when_called_twice(client):
     )
     assert second_create_cases_response.status_code == 200, second_create_cases_response.text
     second_data = second_create_cases_response.json()
-
     assert second_data["created_count"] == 0
     assert second_data["skipped_duplicates_count"] == 2
     assert second_data["duplicate_count"] == 2
@@ -430,7 +418,6 @@ def test_create_cases_allows_same_external_case_id_if_title_differs(client):
         city="Lahti",
         email="paijat-hame.ko@oikeus.fi",
     )
-
     batch = create_inquiry_batch(client)
     batch_id = batch["id"]
 
@@ -472,7 +459,6 @@ def test_create_cases_allows_same_external_case_id_if_title_differs(client):
     )
     assert second_create_cases_response.status_code == 200, second_create_cases_response.text
     second_data = second_create_cases_response.json()
-
     assert second_data["created_count"] == 1
     assert second_data["skipped_duplicates_count"] == 0
     assert len(second_data["created_case_ids"]) == 1
@@ -490,3 +476,77 @@ def test_create_cases_allows_same_external_case_id_if_title_differs(client):
 
     titles = {case["title"] for case in case_details}
     assert titles == {"Törkeä pahoinpitely", "Lievä pahoinpitely"}
+
+
+def test_inquiry_message_secure_link_metadata_roundtrip(client):
+    court = create_court(
+        client,
+        name="Päijät-Hämeen käräjäoikeus",
+        city="Lahti",
+        email="paijat-hame.ko@oikeus.fi",
+    )
+    batch = create_inquiry_batch(client)
+    batch_id = batch["id"]
+
+    generate_response = client.post(
+        f"/inquiry-batches/{batch_id}/generate",
+        json={"court_ids": [court["id"]]},
+    )
+    assert generate_response.status_code == 200, generate_response.text
+
+    inquiries_response = client.get("/inquiries")
+    assert inquiries_response.status_code == 200, inquiries_response.text
+    inquiry_id = inquiries_response.json()[0]["id"]
+
+    create_message_response = client.post(
+        f"/inquiries/{inquiry_id}/messages",
+        json={
+            "message_type": "response",
+            "raw_sender": "Turvaviesti <no-reply@securemail.example>",
+            "raw_subject": "VS: Päijät-Hämeen käräjäoikeuden rikosasioiden käsittelytiedot 1.4.2026–30.4.2026",
+            "source_email_message_id": "<message-id-123@example>",
+            "secure_link_url": "https://securemail.example/message/abc123",
+            "processing_status": "fetched",
+            "processed_at": "2026-04-03T12:00:00+00:00",
+            "fetch_attempt_count": 2,
+            "body": "Varsinainen viesti haetaan secure-linkistä myöhemmin.",
+            "received_at": "2026-04-03T11:30:00+00:00",
+            "notes": "Sisältää secure-linkin",
+        },
+    )
+    assert create_message_response.status_code == 200, create_message_response.text
+    created_message = create_message_response.json()
+
+    assert created_message["message_type"] == "response"
+    assert created_message["sender"] == "Turvaviesti <no-reply@securemail.example>"
+    assert (
+        created_message["subject"]
+        == "VS: Päijät-Hämeen käräjäoikeuden rikosasioiden käsittelytiedot 1.4.2026–30.4.2026"
+    )
+    assert created_message["raw_sender"] == "Turvaviesti <no-reply@securemail.example>"
+    assert (
+        created_message["raw_subject"]
+        == "VS: Päijät-Hämeen käräjäoikeuden rikosasioiden käsittelytiedot 1.4.2026–30.4.2026"
+    )
+    assert created_message["source_email_message_id"] == "<message-id-123@example>"
+    assert created_message["secure_link_url"] == "https://securemail.example/message/abc123"
+    assert created_message["processing_status"] == "fetched"
+    assert created_message["processed_at"] == "2026-04-03T12:00:00+00:00"
+    assert created_message["fetch_attempt_count"] == 2
+
+    get_message_response = client.get(f"/inquiries/messages/{created_message['id']}")
+    assert get_message_response.status_code == 200, get_message_response.text
+    fetched_message = get_message_response.json()
+    assert fetched_message == created_message
+
+    list_messages_response = client.get(f"/inquiries/{inquiry_id}/messages")
+    assert list_messages_response.status_code == 200, list_messages_response.text
+    listed_messages = list_messages_response.json()
+    assert len(listed_messages) == 1
+    assert listed_messages[0]["secure_link_url"] == "https://securemail.example/message/abc123"
+
+    inquiry_response = client.get(f"/inquiries/{inquiry_id}")
+    assert inquiry_response.status_code == 200, inquiry_response.text
+    inquiry_data = inquiry_response.json()
+    assert inquiry_data["status"] == "responded"
+    assert inquiry_data["responded_at"] == "2026-04-03T11:30:00+00:00"

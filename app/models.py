@@ -42,6 +42,7 @@ class Inquiry(Base):
     id = Column(Integer, primary_key=True, index=True)
     batch_id = Column(Integer, ForeignKey("inquiry_batches.id"), nullable=False)
     court_id = Column(Integer, ForeignKey("courts.id"), nullable=False)
+
     recipient_name = Column(Text, nullable=True)
     recipient_email = Column(Text, nullable=True)
     subject = Column(Text, nullable=False)
@@ -66,6 +67,7 @@ class InquiryMessage(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     inquiry_id = Column(Integer, ForeignKey("inquiries.id"), nullable=False)
+
     message_type = Column(Text, nullable=False)
     sender = Column(Text, nullable=True)
     subject = Column(Text, nullable=True)
@@ -75,6 +77,14 @@ class InquiryMessage(Base):
     mime_type = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
 
+    raw_subject = Column(Text, nullable=True)
+    raw_sender = Column(Text, nullable=True)
+    source_email_message_id = Column(Text, nullable=True)
+    secure_link_url = Column(Text, nullable=True)
+    processing_status = Column(Text, nullable=False, default="pending")
+    processed_at = Column(Text, nullable=True)
+    fetch_attempt_count = Column(Integer, nullable=False, default=0)
+
     inquiry = relationship("Inquiry", back_populates="messages")
 
 
@@ -83,6 +93,7 @@ class Case(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     court_id = Column(Integer, ForeignKey("courts.id"), nullable=False)
+
     external_case_id = Column(Text, nullable=True)
     case_type = Column(Text, nullable=True)
     title = Column(Text, nullable=True)
@@ -124,6 +135,7 @@ class HearingDate(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+
     hearing_date = Column(Text, nullable=False)
     hearing_type = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
@@ -136,6 +148,7 @@ class Party(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+
     role = Column(Text, nullable=True)
     name = Column(Text, nullable=False)
     is_public = Column(Integer, default=1)
@@ -148,6 +161,7 @@ class Request(Base):
 
     id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
+
     request_type = Column(Text, nullable=False)
     recipient_name = Column(Text, nullable=True)
     recipient_email = Column(Text, nullable=True)
@@ -168,6 +182,7 @@ class Document(Base):
     id = Column(Integer, primary_key=True, index=True)
     case_id = Column(Integer, ForeignKey("cases.id"), nullable=False)
     request_id = Column(Integer, ForeignKey("requests.id"), nullable=True)
+
     document_type = Column(Text, nullable=False)
     title = Column(Text, nullable=False)
     description = Column(Text, nullable=True)
